@@ -43,6 +43,63 @@ export default class QuestionPage{
         this.ctx.fillStyle = '#fed443';
         this.ctx.fillRect(bar.x+4, bar.y+82, (bar.width-8)*percent, 16);
         this.bar = bar;
+        
+        // 添加返回按钮
+        this.drawBackButton();
+    }
+    
+    // 新增返回按钮绘制方法
+    drawBackButton() {
+        // 绘制返回按钮 - 需要考虑缩放比例
+        this.ctx.fillStyle = '#007AFF';
+        this.ctx.fillRect(20, 20, 60, 40);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('返回', 50, 43);
+        
+        // 保存返回按钮区域用于点击检测 - 转换为实际屏幕坐标
+        this.backButtonArea = {
+            x: 20 * (screenWidth / 750),
+            y: 20 * (screenWidth / 750),
+            width: 60 * (screenWidth / 750),
+            height: 40 * (screenWidth / 750)
+        };
+    }
+
+    // 删除第一个addTouch方法（第71-101行），保留并修改最后一个addTouch方法
+    addTouch(){
+        let _this = this;
+        wx.offTouchStart();
+        wx.onTouchStart((e)=>{
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+            
+            // 检查是否点击了返回按钮
+            if (_this.backButtonArea && 
+                touchX >= _this.backButtonArea.x && 
+                touchX <= _this.backButtonArea.x + _this.backButtonArea.width &&
+                touchY >= _this.backButtonArea.y && 
+                touchY <= _this.backButtonArea.y + _this.backButtonArea.height) {
+                
+                console.log('点击了返回按钮');
+                // 点击了返回按钮
+                DataStore.getInstance().director.backToTabScene();
+                return;
+            }
+            
+            // 原有的答题逻辑
+            console.log(_this.selectArea.endY);
+            if (!this.selected
+                && touchX >= _this.selectArea.x
+                && touchX <= _this.selectArea.endX
+                && touchY >= _this.selectArea.y
+                && touchY <= _this.selectArea.endY){
+                this.selected = true;
+                _this.judgeAnswer(touchX, touchY);
+            }
+        });
     }
     drawPic() {
         let _this = this;

@@ -4,6 +4,7 @@ import QuestionScene from './scene/questionScene';
 import Question from './player/question';
 import ResultScene from './scene/resultScene';
 import DataStore from './base/DataStore';
+import TabScene from './scene/tabScene';
 const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
@@ -20,10 +21,23 @@ export default class Director {
     }
 
     run(ctx) {
-        this.showHomeScene(ctx);
+        // 直接显示TabScene，不检查登录状态
+        this.showTabScene(ctx);
         // 预加载问题图片，减少空白时间
         Question.getInstance();
-        // this.showResultScene();
+    }
+
+    // 注释掉或删除checkUserLogin方法
+    // async checkUserLogin() {
+    //     const userInfo = wx.getStorageSync('userInfo');
+    //     if (!userInfo || !userInfo.token) {
+    //         throw new Error('用户未登录');
+    //     }
+    //     DataStore.getInstance().userInfo = userInfo;
+    // }
+    
+    showTabScene(ctx) {
+        this.tabScene = new TabScene(ctx);
     }
     // 首页场景
     showHomeScene (ctx) {
@@ -77,5 +91,30 @@ export default class Director {
 
         // new ResultScene(DataStore.getInstance().ctx);
         DataStore.getInstance().currentCanvas = 'resultCanvas';
+    }
+
+    // 添加返回TabScene的方法
+    backToTabScene() {
+        // 清理当前场景
+        if (this.offScreenCanvas) {
+            this.offScreenCanvas = null;
+        }
+        
+        // 重置答题索引
+        this.currentIndex = 0;
+        
+        // 清除画布
+        let ctx = DataStore.getInstance().ctx;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        
+        // 恢复TabScene
+        if (this.tabScene) {
+            this.tabScene.resume();
+        } else {
+            this.showTabScene(ctx);
+        }
+        
+        // 更新当前画布状态
+        DataStore.getInstance().currentCanvas = 'tabScene';
     }
 }

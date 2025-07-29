@@ -72,3 +72,26 @@ export const userLogin = async (code, userInfo) => {
         }
     });
 };
+
+// 开始答题
+export const startQuiz = async (category = null, limit = null) => {
+    const requestData = {};
+    if (category) requestData.category = category;
+    if (limit) requestData.limit = limit;
+    
+    return await apiRequest('/question/start', {
+        method: 'POST',
+        data: requestData
+    });
+};
+
+// 提交单个题目答案
+export const submitAnswer = async (questionId, selectedOption) => {
+    return await apiRequest('/question/submit', {
+        method: 'POST',
+        data: {
+            questionId: questionId,
+            selectedOption: selectedOption
+        }
+    });
+};

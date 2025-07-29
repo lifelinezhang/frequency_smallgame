@@ -1,7 +1,7 @@
 import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import QuestionScene from './questionScene';
-import { apiRequest, userLogin } from '../utils/api';
+import { apiRequest, userLogin, startQuiz as startQuizAPI, submitAnswer } from '../utils/api';
 import { login, createUserInfoButton } from '../utils/auth';
 
 export default class ProfileTab {
@@ -419,7 +419,7 @@ export default class ProfileTab {
             const availableAds = this.adList.filter(ad => ad.canWatch);
             if (availableAds.length === 0) {
                 wx.showToast({
-                    title: '暂无可观看的广告',
+                    title: '暂无观看广告',
                     icon: 'none'
                 });
                 return;
@@ -474,12 +474,78 @@ export default class ProfileTab {
         }
     }
 
-    startQuiz() {
-        // 保存当前TabScene的引用，以便返回
-        DataStore.getInstance().currentTabScene = DataStore.getInstance().director.tabScene;
-        
-        // 跳转到答题场景
-        DataStore.getInstance().director.toQuestionScene();
+    async startQuiz() {
+        try {
+            wx.showLoading({
+                title: '准备答题中...'
+            });
+            
+            // 调用后端开始答题接口
+            const quizResult = await startQuizAPI();
+            
+            if (quizResult.code === '200' || quizResult.code === 200) {
+                // 保存答题会话信息到DataStore
+                if (quizResult.data && quizResult.data.questions) {
+                    // 转换后端题目格式为前端需要的格式
+                    const convertedQuestions = quizResult.data.questions.map(q => {
+                        // 解析选项格式: ["A:选项内容", "B:选项内容", "C:选项内容", "D:选项内容"]
+                        let options = [];
+                        let optionKeys = [];
+                        
+                        if (Array.isArray(q.options)) {
+                            q.options.forEach(optStr => {
+                                if (typeof optStr === 'string' && optStr.includes(':')) {
+                                    const [key, value] = optStr.split(':');
+                                    if (key && value) {
+                                        optionKeys.push(key.trim());
+                                        options.push(value.trim());
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // 确保数据类型正确
+                        return {
+                            id: q.id,
+                            title: String(q.title || ''), // 题目标题
+                            content: String(q.content || ''), // 题目内容（问题描述）
+                            choices: options, // 选项文本数组
+                            optionKeys: optionKeys, // 选项键数组 ["A", "B", "C", "D"]
+                            pic: 'images/question-bg.png',
+                            category: String(q.category || ''),
+                            sortOrder: q.sortOrder || 0
+                        };
+                    });
+                    
+                    DataStore.getInstance().quizSession = {
+                        questions: convertedQuestions,
+                        totalCount: quizResult.data.totalCount || convertedQuestions.length,
+                        category: quizResult.data.category,
+                        currentIndex: 0,
+                        userAnswers: []
+                    };
+                    
+                    console.log('转换后的题目数据:', convertedQuestions);
+                }
+                
+                // 保存当前TabScene的引用，以便返回
+                DataStore.getInstance().currentTabScene = DataStore.getInstance().director.tabScene;
+                
+                wx.hideLoading();
+                
+                // 跳转到答题场景
+                DataStore.getInstance().director.toQuestionScene();
+            } else {
+                throw new Error(quizResult.msg || '开始答题失败');
+            }
+        } catch (error) {
+            wx.hideLoading();
+            console.error('开始答题失败:', error);
+            wx.showToast({
+                title: error.message || '开始答题失败，请重试',
+                icon: 'none'
+            });
+        }
     }
 
     showMyReports() {

@@ -1,7 +1,8 @@
 // 控制游戏逻辑
 import HomeScene from './scene/homeScene';
 import QuestionScene from './scene/questionScene';
-import Question from './player/question';
+// 移除Question类的导入
+// import Question from './player/question';  // 删除这行
 import ResultScene from './scene/resultScene';
 import DataStore from './base/DataStore';
 import TabScene from './scene/tabScene';
@@ -23,8 +24,8 @@ export default class Director {
     run(ctx) {
         // 直接显示TabScene，不检查登录状态
         this.showTabScene(ctx);
-        // 预加载问题图片，减少空白时间
-        Question.getInstance();
+        // 移除预加载问题图片的代码
+        // Question.getInstance();  // 删除这行
     }
 
     // 注释掉或删除checkUserLogin方法
@@ -51,21 +52,36 @@ export default class Director {
         this.offScreenCanvas.width = screenWidth * ratio;
         this.offScreenCanvas.height = screenHeight * ratio;
         let questionCtx = this.offScreenCanvas.getContext('2d');
-        // 按照 750设计稿绘制
         questionCtx.scale(ratio, ratio);
         let scales = screenWidth / 750;
         questionCtx.scale(scales, scales);
 
         DataStore.getInstance().offScreenCanvas = this.offScreenCanvas;
         ctx.clearRect(0, 0, screenWidth * ratio, screenHeight * ratio);
-        this.questionScene = new QuestionScene(questionCtx, Question.getInstance().currentList[this.currentIndex], this.currentIndex);
+        
+        // 只使用从后端获取的题目数据
+        const quizSession = DataStore.getInstance().quizSession;
+        if (quizSession && quizSession.questions && quizSession.questions.length > 0) {
+            this.questionScene = new QuestionScene(questionCtx, quizSession.questions[this.currentIndex], this.currentIndex);
+        } else {
+            console.error('没有找到后端题目数据，无法开始答题');
+            wx.showToast({
+                title: '题目加载失败',
+                icon: 'none'
+            });
+            return;
+        }
 
         ctx.drawImage(this.offScreenCanvas, 0, 0, screenWidth, screenHeight);
         DataStore.getInstance().currentCanvas = 'questionCanvas';
     }
     // 问题场景
+    // 修改 nextQuestionScene 方法
     nextQuestionScene () {
-        if (this.currentIndex === 9) {
+        const quizSession = DataStore.getInstance().quizSession;
+        const totalQuestions = quizSession ? quizSession.questions.length : 10;
+        
+        if (this.currentIndex === totalQuestions - 1) {
             this.showResultScene();
             return;
         }

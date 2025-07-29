@@ -1,12 +1,13 @@
 // API请求工具函数
 export const apiRequest = async (url, options = {}) => {
-    const baseURL = 'http://127.0.0.1'; // 替换为你的API域名
+    const baseURL = 'http://127.0.0.1:8098/api/web'; // 你的API域名
     
     const defaultOptions = {
         method: 'GET',
-        headers: {
+        header: {
             'Content-Type': 'application/json',
-        }
+        },
+        timeout: 10000
     };
     
     const config = { ...defaultOptions, ...options };
@@ -14,27 +15,53 @@ export const apiRequest = async (url, options = {}) => {
     // 添加用户token
     const userInfo = wx.getStorageSync('userInfo');
     if (userInfo && userInfo.token) {
-        config.headers.Authorization = `Bearer ${userInfo.token}`;
+        config.header.token = userInfo.token;
     }
     
-    try {
-        const response = await fetch(baseURL + url, config);
-        const data = await response.json();
-        
-        if (data.code === '200' || data.code === 200) {
-            return data;
-        } else {
-            throw new Error(data.msg || '请求失败');
+    // 处理请求数据
+    if (config.data) {
+        if (config.method === 'POST' || config.method === 'PUT') {
+            config.data = JSON.stringify(config.data);
         }
-    } catch (error) {
-        console.error('API请求失败:', error);
-        throw error;
     }
+    
+    // 完整的请求URL
+    const fullUrl = baseURL + url;
+    
+    return new Promise((resolve, reject) => {
+        console.log('API请求:', fullUrl, config);
+        
+        wx.request({
+            url: fullUrl,
+            method: config.method,
+            data: config.data,
+            header: config.header,
+            timeout: config.timeout,
+            success: (res) => {
+                console.log('API响应:', res);
+                
+                if (res.statusCode === 200) {
+                    const data = res.data;
+                    if (data.code === '200' || data.code === 200) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(data.msg || '请求失败'));
+                    }
+                } else {
+                    reject(new Error(`HTTP ${res.statusCode}: ${res.data?.msg || '网络请求失败'}`));
+                }
+            },
+            fail: (error) => {
+                console.error('API请求失败:', error);
+                reject(new Error(error.errMsg || '网络请求失败'));
+            }
+        });
+    });
 };
 
 // 用户登录
 export const userLogin = async (code, userInfo) => {
-    return await apiRequest('/api/user/login', {
+    return await apiRequest('/api/user/login', {  // 去掉重复的 /api/web
         method: 'POST',
         data: {
             code: code,

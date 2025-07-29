@@ -1,7 +1,8 @@
 import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import QuestionScene from './questionScene';
-import { apiRequest } from '../utils/api';
+import { apiRequest, userLogin } from '../utils/api';
+import { login, createUserInfoButton } from '../utils/auth';
 
 export default class ProfileTab {
     constructor(ctx) {
@@ -10,11 +11,31 @@ export default class ProfileTab {
         this.keyInfo = null;
         this.reports = [];
         this.adList = [];
+        this.isLoggedIn = false;
+        this.loginButton = null;
+        this.checkLoginStatus();
         this.loadData();
+    }
+
+    // 检查登录状态
+    checkLoginStatus() {
+        const userInfo = wx.getStorageSync('userInfo');
+        if (userInfo && userInfo.token) {
+            this.isLoggedIn = true;
+            this.userInfo = userInfo;
+            DataStore.getInstance().userInfo = userInfo;
+        } else {
+            this.isLoggedIn = false;
+        }
     }
 
     async loadData() {
         try {
+            if (!this.isLoggedIn) {
+                this.render(); // 显示登录界面
+                return;
+            }
+            
             // 获取用户信息
             const userInfo = DataStore.getInstance().userInfo;
             // 获取钥匙信息
@@ -31,35 +52,238 @@ export default class ProfileTab {
             this.render();
         } catch (error) {
             console.error('加载用户数据失败:', error);
+            // 如果是token失效，清除登录状态
+            if (error.message.includes('token') || error.message.includes('登录')) {
+                this.logout();
+            }
         }
     }
 
     render() {
         const background = new Background(this.ctx);
         
-        // 绘制用户头像和信息
-        this.drawUserInfo();
+        if (!this.isLoggedIn) {
+            this.drawLoginInterface();
+        } else {
+            // 绘制用户头像和信息
+            this.drawUserInfo();
+            
+            // 绘制钥匙信息
+            this.drawKeyInfo();
+            
+            // 绘制功能按钮
+            this.drawActionButtons();
+            
+            // 绘制我的报告
+            this.drawMyReports();
+        }
+    }
+
+    // 绘制登录界面
+    drawLoginInterface() {
+        // 清除之前的登录按钮
+        if (this.loginButton) {
+            this.loginButton.destroy();
+            this.loginButton = null;
+        }
+
+        // 绘制登录提示
+        this.ctx.fillStyle = '#333333';
+        this.ctx.font = 'bold 24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('我的', window.innerWidth/2, 80);
         
-        // 绘制钥匙信息
-        this.drawKeyInfo();
+        // 绘制未登录提示
+        this.ctx.fillStyle = '#666666';
+        this.ctx.font = '18px Arial';
+        this.ctx.fillText('请先登录以查看个人信息', window.innerWidth/2, 200);
         
-        // 绘制功能按钮
-        this.drawActionButtons();
+        // 绘制登录按钮背景
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonX = (window.innerWidth - buttonWidth) / 2;
+        const buttonY = 250;
         
-        // 绘制我的报告
-        this.drawMyReports();
+        this.ctx.fillStyle = '#007AFF';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '18px Arial';
+        this.ctx.fillText('快速登录', window.innerWidth/2, buttonY + 32);
+        
+        // 设置登录按钮区域
+        this.createLoginButton(buttonX, buttonY, buttonWidth, buttonHeight);
+    }
+
+    // 创建登录按钮
+    createLoginButton(x, y, width, height) {
+        this.loginButton = wx.createUserInfoButton({
+            type: 'text',
+            text: '',
+            style: {
+                left: x,
+                top: y,
+                width: width,
+                height: height,
+                backgroundColor: 'transparent',
+                color: 'transparent',
+                fontSize: 1,
+                borderRadius: 8
+            }
+        });
+        
+        this.loginButton.show();
+        
+        this.loginButton.onTap(async (res) => {
+            console.log('登录按钮点击，返回数据:', res);
+            
+            if (res.userInfo) {
+                console.log('获取到用户信息，开始登录流程');
+                await this.handleLogin(res);
+            } else {
+                console.log('未获取到用户信息，可能用户拒绝授权');
+                
+                // 检查用户是否拒绝了授权
+                wx.getSetting({
+                    success: (settingRes) => {
+                        console.log('用户授权设置:', settingRes.authSetting);
+                        
+                        if (settingRes.authSetting['scope.userInfo'] === false) {
+                            // 用户拒绝了授权，引导用户手动开启
+                            wx.showModal({
+                                title: '需要授权',
+                                content: '需要获取您的用户信息才能登录，请在设置中开启授权',
+                                confirmText: '去设置',
+                                success: (modalRes) => {
+                                    if (modalRes.confirm) {
+                                        wx.openSetting();
+                                    }
+                                }
+                            });
+                        } else {
+                            // 其他情况，可能是网络问题或系统问题
+                            wx.showToast({
+                                title: '获取用户信息失败，请重试',
+                                icon: 'none'
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // 处理登录
+    async handleLogin(userInfoRes) {
+        try {
+            wx.showLoading({
+                title: '登录中...'
+            });
+            
+            // 获取微信登录code
+            const loginRes = await new Promise((resolve, reject) => {
+                wx.login({
+                    success: resolve,
+                    fail: reject
+                });
+            });
+            
+            // 调用后端登录接口
+            const loginResult = await userLogin(loginRes.code, userInfoRes.userInfo);
+            
+            if (loginResult.code === '200' || loginResult.code === 200) {
+                // 保存用户信息和token
+                const userInfo = {
+                    ...userInfoRes.userInfo,
+                    token: loginResult.data.token,
+                    userId: loginResult.data.userId
+                };
+                
+                wx.setStorageSync('userInfo', userInfo);
+                DataStore.getInstance().userInfo = userInfo;
+                
+                this.isLoggedIn = true;
+                this.userInfo = userInfo;
+                
+                // 隐藏登录按钮
+                if (this.loginButton) {
+                    this.loginButton.destroy();
+                    this.loginButton = null;
+                }
+                
+                wx.hideLoading();
+                wx.showToast({
+                    title: '登录成功',
+                    icon: 'success'
+                });
+                
+                // 重新加载数据
+                this.loadData();
+            } else {
+                throw new Error(loginResult.msg || '登录失败');
+            }
+        } catch (error) {
+            wx.hideLoading();
+            console.error('登录失败:', error);
+            wx.showToast({
+                title: error.message || '登录失败',
+                icon: 'none'
+            });
+        }
+    }
+
+    // 退出登录
+    logout() {
+        wx.removeStorageSync('userInfo');
+        DataStore.getInstance().userInfo = null;
+        this.isLoggedIn = false;
+        this.userInfo = null;
+        this.keyInfo = null;
+        this.reports = [];
+        this.adList = [];
+        
+        wx.showToast({
+            title: '已退出登录',
+            icon: 'success'
+        });
+        
+        this.render();
     }
 
     drawUserInfo() {
-        // 绘制头像占位
-        this.ctx.fillStyle = '#cccccc';
-        this.ctx.fillRect(window.innerWidth/2 - 40, 30, 80, 80);
+        if (!this.userInfo) return;
         
-        // 绘制用户昵称
+        // 绘制标题和退出按钮
         this.ctx.fillStyle = '#333333';
-        this.ctx.font = 'bold 20px Arial';
+        this.ctx.font = 'bold 24px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(this.userInfo?.nickname || '用户', window.innerWidth/2, 130);
+        this.ctx.fillText('我的', window.innerWidth/2, 50);
+        
+        // 绘制退出登录按钮
+        this.ctx.fillStyle = '#ff4444';
+        this.ctx.fillRect(window.innerWidth - 80, 20, 60, 30);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('退出', window.innerWidth - 50, 38);
+        
+        // 绘制用户头像区域
+        this.ctx.fillStyle = '#f0f0f0';
+        this.ctx.fillRect(20, 70, window.innerWidth - 40, 80);
+        
+        // 绘制头像占位符
+        this.ctx.fillStyle = '#cccccc';
+        this.ctx.fillRect(40, 85, 50, 50);
+        
+        // 绘制用户信息
+        this.ctx.fillStyle = '#333333';
+        this.ctx.font = '18px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(this.userInfo.nickName || '用户', 110, 105);
+        
+        this.ctx.fillStyle = '#666666';
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('已登录', 110, 125);
     }
 
     drawKeyInfo() {
@@ -139,20 +363,41 @@ export default class ProfileTab {
     }
 
     async handleTouch(x, y) {
-        // 检查观看广告按钮
-        if (x > window.innerWidth - 120 && x < window.innerWidth - 40 && y > 170 && y < 210) {
-            await this.showAdVideo();
+        if (!this.isLoggedIn) {
+            // 未登录状态下的触摸处理已由登录按钮处理
             return;
         }
         
-        // 检查开始答题按钮
-        const buttonWidth = (window.innerWidth - 60) / 2;
-        if (y > 240 && y < 290) {
-            if (x > 20 && x < 20 + buttonWidth) {
-                this.startQuiz();
-            } else if (x > 40 + buttonWidth && x < 40 + buttonWidth * 2) {
-                this.showMyReports();
-            }
+        // 检查是否点击了退出登录按钮
+        if (x >= window.innerWidth - 80 && x <= window.innerWidth - 20 && y >= 20 && y <= 50) {
+            wx.showModal({
+                title: '确认退出',
+                content: '确定要退出登录吗？',
+                success: (res) => {
+                    if (res.confirm) {
+                        this.logout();
+                    }
+                }
+            });
+            return;
+        }
+        
+        // 检查是否点击了观看广告按钮
+        if (y >= 170 && y <= 210 && x >= window.innerWidth - 120) {
+            this.showAdVideo();
+            return;
+        }
+        
+        // 检查是否点击了开始答题按钮
+        if (y >= 240 && y <= 280 && x >= 20 && x <= window.innerWidth - 20) {
+            this.startQuiz();
+            return;
+        }
+        
+        // 检查是否点击了我的报告按钮
+        if (y >= 300 && y <= 340 && x >= 20 && x <= window.innerWidth - 20) {
+            this.showMyReports();
+            return;
         }
     }
 

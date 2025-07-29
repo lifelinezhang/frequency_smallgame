@@ -103,18 +103,29 @@ export default class Director {
         // 重置答题索引
         this.currentIndex = 0;
         
+        // 清除微信的触摸事件监听
+        wx.offTouchStart();
+        
         // 清除画布
         let ctx = DataStore.getInstance().ctx;
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         
         // 恢复TabScene
         if (this.tabScene) {
+            // 设置当前tab为"我的"页面
+            this.tabScene.currentTab = 2;
             this.tabScene.resume();
         } else {
             this.showTabScene(ctx);
+            // 设置默认显示"我的"页面
+            if (this.tabScene) {
+                this.tabScene.currentTab = 2;
+            }
         }
         
         // 更新当前画布状态
         DataStore.getInstance().currentCanvas = 'tabScene';
+        
+        console.log('返回到TabScene完成，当前tab:', this.tabScene?.currentTab);
     }
 }

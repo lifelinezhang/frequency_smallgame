@@ -13,7 +13,7 @@ export default class TabScene {
     constructor(ctx) {
         this.ctx = ctx;
         this.canvas = DataStore.getInstance().canvas;
-        this.currentTab = 0; // 0:推荐 1:好友 2:我的
+        this.currentTab = 2; // 默认显示"我的"页面（索引2）
         this.tabs = [
             new RecommendTab(ctx),
             new FriendsTab(ctx),
@@ -68,26 +68,46 @@ export default class TabScene {
 
     // 添加恢复显示的方法
     resume() {
+        console.log('TabScene resume 被调用');
+        
+        // 清除可能存在的微信事件监听
+        wx.offTouchStart();
+        
         // 重新绘制当前tab
         this.showCurrentTab();
         this.drawTabBar();
+        
+        // 重新绑定事件
+        this.bindTabEvents();
     }
 
     bindTabEvents() {
-        this.canvas.addEventListener('touchstart', (e) => {
+        console.log('绑定TabScene事件');
+        
+        // 清除之前的微信事件监听
+        wx.offTouchStart();
+        
+        // 使用微信的事件系统而不是canvas的addEventListener
+        wx.onTouchStart((e) => {
             const touch = e.touches[0];
             const x = touch.clientX;
             const y = touch.clientY;
             
+            console.log('TabScene 触摸事件:', x, y);
+            
             // 检查是否点击了tab栏
             if (y > screenHeight - 100) {
                 const tabIndex = Math.floor(x / (screenWidth / 3));
+                console.log('点击了tab:', tabIndex);
                 if (tabIndex !== this.currentTab) {
                     this.switchTab(tabIndex);
                 }
             } else {
                 // 传递事件给当前tab
-                this.tabs[this.currentTab].handleTouch(x, y);
+                console.log('传递事件给当前tab:', this.currentTab);
+                if (this.tabs[this.currentTab] && this.tabs[this.currentTab].handleTouch) {
+                    this.tabs[this.currentTab].handleTouch(x, y);
+                }
             }
         });
     }

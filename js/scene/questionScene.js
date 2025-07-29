@@ -50,25 +50,26 @@ export default class QuestionPage{
     
     // 新增返回按钮绘制方法
     drawBackButton() {
-        // 绘制返回按钮 - 需要考虑缩放比例
+        // 绘制更大的返回按钮
         this.ctx.fillStyle = '#007AFF';
-        this.ctx.fillRect(20, 20, 60, 40);
+        this.ctx.fillRect(20, 20, 120, 60);  // 增大按钮尺寸
         
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '16px Arial';
+        this.ctx.font = '24px Arial';  // 增大字体
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('返回', 50, 43);
+        this.ctx.fillText('返回', 80, 55);
         
         // 保存返回按钮区域用于点击检测 - 转换为实际屏幕坐标
         this.backButtonArea = {
             x: 20 * (screenWidth / 750),
             y: 20 * (screenWidth / 750),
-            width: 60 * (screenWidth / 750),
-            height: 40 * (screenWidth / 750)
+            width: 120 * (screenWidth / 750),  // 对应增大的宽度
+            height: 60 * (screenWidth / 750)   // 对应增大的高度
         };
+        
+        console.log('返回按钮区域:', this.backButtonArea);
     }
 
-    // 删除第一个addTouch方法（第71-101行），保留并修改最后一个addTouch方法
     addTouch(){
         let _this = this;
         wx.offTouchStart();
@@ -76,13 +77,16 @@ export default class QuestionPage{
             const touchX = e.touches[0].clientX;
             const touchY = e.touches[0].clientY;
             
-            // 检查是否点击了返回按钮
+            console.log('触摸坐标:', touchX, touchY);
+            console.log('返回按钮区域:', _this.backButtonArea);
+            
+            // 检查是否点击了返回按钮 - 增加一些容错范围
             if (_this.backButtonArea && 
-                touchX >= _this.backButtonArea.x && 
-                touchX <= _this.backButtonArea.x + _this.backButtonArea.width &&
-                touchY >= _this.backButtonArea.y && 
-                touchY <= _this.backButtonArea.y + _this.backButtonArea.height) {
-                
+                touchX >= _this.backButtonArea.x - 10 &&  // 增加10像素容错
+                touchX <= _this.backButtonArea.x + _this.backButtonArea.width + 10 &&
+                touchY >= _this.backButtonArea.y - 10 && 
+                touchY <= _this.backButtonArea.y + _this.backButtonArea.height + 10) {
+            
                 console.log('点击了返回按钮');
                 // 点击了返回按钮
                 DataStore.getInstance().director.backToTabScene();
@@ -223,20 +227,5 @@ export default class QuestionPage{
     // 重新绘制canvas 到主屏上
     reDrawCanvas() {
         DataStore.getInstance().ctx.drawImage(DataStore.getInstance().offScreenCanvas, 0, 0, screenWidth, screenHeight);
-    }
-    addTouch(){
-        let _this = this;
-        wx.offTouchStart();
-        wx.onTouchStart((e)=>{
-            console.log(_this.selectArea.endY);
-            if (!this.selected
-                &&e.touches[0].clientX >= _this.selectArea.x
-                && e.touches[0].clientX <= _this.selectArea.endX
-                && e.touches[0].clientY >= _this.selectArea.y
-                && e.touches[0].clientY <= _this.selectArea.endY){
-                this.selected = true;
-                _this.judgeAnswer(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        });
     }
 }

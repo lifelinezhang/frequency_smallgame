@@ -818,21 +818,18 @@ POST /api/user/consume-keys/{userId}
 
 # 题目管理
 
-## POST 开始答题
+## POST 获取题目列表
 
-POST /question/start
+POST /question/getList
 
 开始答题
-开始答题
+获取题目列表
 获取题目列表，开始答题会话
 
 > Body 请求参数
 
 ```json
-{
-  "category": "string",
-  "limit": 0
-}
+{}
 ```
 
 ### 请求参数
@@ -855,10 +852,9 @@ POST /question/start
         "id": 0,
         "title": "",
         "content": "",
-        "type": 0,
-        "options": [
-          ""
-        ],
+        "options": {
+          "": ""
+        },
         "category": "",
         "sortOrder": 0
       }
@@ -918,7 +914,7 @@ POST /question/submit
 
 ## GET 获取答题记录
 
-GET /question/answers
+GET /question/getAnswerHistory
 
 获取用户答题记录
 获取答题记录
@@ -1591,10 +1587,9 @@ GET /question/answers
   "id": 0,
   "title": "string",
   "content": "string",
-  "type": -127,
-  "options": [
-    "string"
-  ],
+  "options": {
+    "key": "string"
+  },
   "category": "string",
   "sortOrder": 0
 }
@@ -1608,10 +1603,29 @@ GET /question/answers
 |id|integer(int64)|false|none||题目ID|
 |title|string|false|none||题目标题|
 |content|string|false|none||题目内容描述|
-|type|integer|false|none||题目类型 1-单选 2-多选 3-填空 4-问答|
-|options|[string]|false|none||选项列表|
+|options|[LinkedHashMapString](#schemalinkedhashmapstring)|false|none||选项列表|
 |category|string|false|none||题目分类|
 |sortOrder|integer|false|none||排序序号|
+
+<h2 id="tocS_LinkedHashMapString">LinkedHashMapString</h2>
+
+<a id="schemalinkedhashmapstring"></a>
+<a id="schema_LinkedHashMapString"></a>
+<a id="tocSlinkedhashmapstring"></a>
+<a id="tocslinkedhashmapstring"></a>
+
+```json
+{
+  "key": "string"
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|key|string|false|none||none|
 
 <h2 id="tocS_QuizSessionVO">QuizSessionVO</h2>
 
@@ -1627,10 +1641,9 @@ GET /question/answers
       "id": 0,
       "title": "string",
       "content": "string",
-      "type": -127,
-      "options": [
-        "string"
-      ],
+      "options": {
+        "key": "string"
+      },
       "category": "string",
       "sortOrder": 0
     }
@@ -1666,10 +1679,9 @@ GET /question/answers
         "id": 0,
         "title": "string",
         "content": "string",
-        "type": -127,
-        "options": [
-          "string"
-        ],
+        "options": {
+          "key": "string"
+        },
         "category": "string",
         "sortOrder": 0
       }
@@ -1697,19 +1709,13 @@ GET /question/answers
 <a id="tocsstartquizcommand"></a>
 
 ```json
-{
-  "category": "string",
-  "limit": 0
-}
+{}
 
 ```
 
 ### 属性
 
-|名称|类型|必选|约束|中文名|说明|
-|---|---|---|---|---|---|
-|category|string|false|none||题目分类|
-|limit|integer|false|none||题目数量限制|
+*None*
 
 <h2 id="tocS_SubmitAnswerCommand">SubmitAnswerCommand</h2>
 

@@ -73,19 +73,15 @@ export const userLogin = async (code, userInfo) => {
     });
 };
 
-// 开始答题
-export const startQuiz = async (category = null, limit = null) => {
-    const requestData = {};
-    if (category) requestData.category = category;
-    if (limit) requestData.limit = limit;
-    
-    return await apiRequest('/question/start', {
+// 开始答题 - 修改接口路径和参数
+export const startQuiz = async () => {
+    return await apiRequest('/question/getList', {
         method: 'POST',
-        data: requestData
+        data: {} // StartQuizCommand 现在为空对象
     });
 };
 
-// 提交单个题目答案
+// 提交单个题目答案 - 保持不变
 export const submitAnswer = async (questionId, selectedOption) => {
     return await apiRequest('/question/submit', {
         method: 'POST',

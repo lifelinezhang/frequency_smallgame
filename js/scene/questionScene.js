@@ -178,11 +178,8 @@ export default class QuestionPage{
                 selectedIndex: selectedIndex
             });
             
-            // 调用后端提交答案接口
-            const result = await submitAnswer({
-                questionId: currentQuestion.id,
-                selectedOption: selectedOptionKey
-            });
+            // 修正：传递两个独立的参数而不是一个对象
+            const result = await submitAnswer(currentQuestion.id, selectedOptionKey);
             
             console.log('答案提交结果:', result);
             

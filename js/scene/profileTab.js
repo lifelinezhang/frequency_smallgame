@@ -484,33 +484,27 @@ export default class ProfileTab {
             const quizResult = await startQuizAPI();
             
             if (quizResult.code === '200' || quizResult.code === 200) {
-                // 保存答题会话信息到DataStore
                 if (quizResult.data && quizResult.data.questions) {
                     // 转换后端题目格式为前端需要的格式
                     const convertedQuestions = quizResult.data.questions.map(q => {
-                        // 解析选项格式: ["A:选项内容", "B:选项内容", "C:选项内容", "D:选项内容"]
+                        // 新的选项格式: options 是一个对象 {"A": "选项内容", "B": "选项内容"}
                         let options = [];
                         let optionKeys = [];
                         
-                        if (Array.isArray(q.options)) {
-                            q.options.forEach(optStr => {
-                                if (typeof optStr === 'string' && optStr.includes(':')) {
-                                    const [key, value] = optStr.split(':');
-                                    if (key && value) {
-                                        optionKeys.push(key.trim());
-                                        options.push(value.trim());
-                                    }
-                                }
+                        if (q.options && typeof q.options === 'object') {
+                            // 遍历选项对象，提取键值对
+                            Object.entries(q.options).forEach(([key, value]) => {
+                                optionKeys.push(key); // A, B, C, D
+                                options.push(String(value)); // 选项内容
                             });
                         }
                         
-                        // 确保数据类型正确
                         return {
                             id: q.id,
-                            title: String(q.title || ''), // 题目标题
-                            content: String(q.content || ''), // 题目内容（问题描述）
+                            title: String(q.title || ''),
+                            content: String(q.content || ''),
                             choices: options, // 选项文本数组
-                            optionKeys: optionKeys, // 选项键数组 ["A", "B", "C", "D"]
+                            optionKeys: optionKeys, // 选项键数组
                             pic: 'images/question-bg.png',
                             category: String(q.category || ''),
                             sortOrder: q.sortOrder || 0
@@ -528,12 +522,8 @@ export default class ProfileTab {
                     console.log('转换后的题目数据:', convertedQuestions);
                 }
                 
-                // 保存当前TabScene的引用，以便返回
                 DataStore.getInstance().currentTabScene = DataStore.getInstance().director.tabScene;
-                
                 wx.hideLoading();
-                
-                // 跳转到答题场景
                 DataStore.getInstance().director.toQuestionScene();
             } else {
                 throw new Error(quizResult.msg || '开始答题失败');

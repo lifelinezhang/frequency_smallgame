@@ -149,7 +149,7 @@ export default class QuestionPage{
         // 延迟跳转到下一题
         setTimeout(() => {
             DataStore.getInstance().director.nextQuestionScene();
-        }, 1000);
+        }, 10);
     }
     
     // 提交答案到后端的方法
@@ -172,10 +172,13 @@ export default class QuestionPage{
                 currentQuestion.optionKeys[selectedIndex] : 
                 ['A', 'B', 'C', 'D'][selectedIndex];
             
-            console.log('提交答案:', {
+            console.log('🚀 提交答案详情:', {
+                currentIndex: quizSession.currentIndex,
                 questionId: currentQuestion.id,
+                questionTitle: currentQuestion.title ? currentQuestion.title.substring(0, 50) + '...' : 'N/A',
                 selectedOption: selectedOptionKey,
-                selectedIndex: selectedIndex
+                selectedIndex: selectedIndex,
+                totalQuestions: quizSession.questions.length
             });
             
             // 修正：传递两个独立的参数而不是一个对象

@@ -91,3 +91,13 @@ export const submitAnswer = async (questionId, selectedOption) => {
         }
     });
 };
+
+/**
+ * 获取用户答题记录
+ * @returns {Promise} 返回用户的完整答题记录
+ */
+export const getAnswerHistory = async () => {
+    return await apiRequest('/question/getAnswerHistory', {
+        method: 'GET'
+    });
+};

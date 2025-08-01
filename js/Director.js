@@ -6,6 +6,7 @@ import QuestionScene from './scene/questionScene';
 import ResultScene from './scene/resultScene';
 import DataStore from './base/DataStore';
 import TabScene from './scene/tabScene';
+import { getAnswerHistory } from './utils/api';
 const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
@@ -45,6 +46,10 @@ export default class Director {
         this.homeScene = new HomeScene(ctx);
     }
 
+    /**
+     * 显示答题场景
+     * 确保Director和quizSession的currentIndex保持同步
+     */
     toQuestionScene () {
         let ctx = DataStore.getInstance().ctx;
         this.offScreenCanvas = wx.createCanvas();
@@ -62,6 +67,16 @@ export default class Director {
         // 只使用从后端获取的题目数据
         const quizSession = DataStore.getInstance().quizSession;
         if (quizSession && quizSession.questions && quizSession.questions.length > 0) {
+            // 🔧 确保quizSession.currentIndex与Director.currentIndex同步
+            quizSession.currentIndex = this.currentIndex;
+            
+            console.log('🎯 创建题目场景:', {
+                directorIndex: this.currentIndex,
+                quizSessionIndex: quizSession.currentIndex,
+                questionId: quizSession.questions[this.currentIndex].id,
+                totalQuestions: quizSession.questions.length
+            });
+            
             this.questionScene = new QuestionScene(questionCtx, quizSession.questions[this.currentIndex], this.currentIndex);
         } else {
             console.error('没有找到后端题目数据，无法开始答题');
@@ -77,15 +92,29 @@ export default class Director {
     }
     // 问题场景
     // 修改 nextQuestionScene 方法
+    /**
+     * 切换到下一题
+     * 确保索引正确更新
+     */
     nextQuestionScene () {
         const quizSession = DataStore.getInstance().quizSession;
         const totalQuestions = quizSession ? quizSession.questions.length : 10;
         
+        console.log('⏭️ 准备切换到下一题:', {
+            currentIndex: this.currentIndex,
+            totalQuestions: totalQuestions,
+            isLastQuestion: this.currentIndex === totalQuestions - 1
+        });
+        
         if (this.currentIndex === totalQuestions - 1) {
+            console.log('🏁 已是最后一题，显示结果页面');
             this.showResultScene();
             return;
         }
+        
         this.currentIndex++;
+        console.log('📈 索引已更新为:', this.currentIndex);
+        
         if (this.offScreenCanvas) {
             this.offScreenCanvas = null;
         }
@@ -116,36 +145,92 @@ export default class Director {
      * 处理答题完成后的逻辑
      * 将用户答案传递给好友排行榜
      */
-    handleQuizCompletion() {
-        console.log('答题完成，开始处理用户答案');
+    /**
+     * 处理答题完成逻辑
+     * 从后端获取用户的完整答题记录
+     */
+    async handleQuizCompletion() {
+        console.log('答题完成，开始获取用户答题记录');
+        
+        try {
+            // 调用后端接口获取用户的完整答题记录
+            const response = await getAnswerHistory();
+            
+            if (response && response.data) {
+                 const answerHistory = response.data;
+                 console.log('🎯 从后端获取到用户答题记录:');
+                 console.log('- 答题记录总数:', answerHistory.length);
+                 console.log('- 完整记录数据:', answerHistory);
+                 console.log('- 第一条记录:', answerHistory[0]);
+                 console.log('- 最后一条记录:', answerHistory[answerHistory.length - 1]);
+                
+                // 转换答题记录格式以适配好友排行榜
+                const userAnswers = answerHistory.map((record, index) => ({
+                    questionId: record.questionId,
+                    selectedOption: record.answerContent,
+                    questionIndex: index,
+                    answerTime: record.answerTime,
+                    createTime: record.createTime
+                }));
+                
+                console.log('转换后的答案数据:', userAnswers);
+                
+                // 将完整答案数据传递给好友排行榜
+                this.updateFriendsTabWithAnswers(userAnswers);
+                
+                // 保存答案到本地存储（可选）
+                try {
+                    wx.setStorageSync('lastQuizAnswers', {
+                        answers: userAnswers,
+                        timestamp: Date.now(),
+                        totalQuestions: userAnswers.length
+                    });
+                    console.log('完整答案已保存到本地存储');
+                } catch (error) {
+                    console.error('保存答案到本地存储失败:', error);
+                }
+            } else {
+                console.warn('获取答题记录失败，响应数据为空');
+                // 如果接口调用失败，回退到本地数据
+                this.handleQuizCompletionFallback();
+            }
+        } catch (error) {
+            console.error('获取答题记录失败:', error);
+            // 如果接口调用失败，回退到本地数据
+            this.handleQuizCompletionFallback();
+        }
+    }
+    
+    /**
+     * 答题完成的回退处理（当接口调用失败时使用本地数据）
+     */
+    handleQuizCompletionFallback() {
+        console.log('使用本地数据作为回退方案');
         
         const quizSession = DataStore.getInstance().quizSession;
         if (!quizSession || !quizSession.userAnswers) {
-            console.warn('没有找到用户答案数据');
+            console.warn('没有找到本地用户答案数据');
             return;
         }
         
-        // 提取用户的答案数组（只保留选择的选项）
-        const userAnswers = quizSession.userAnswers.map(answer => {
-            return answer ? answer.selectedOption : null;
+        // 提取用户的完整答案数组（包含题目ID和选择的选项）
+        const userAnswers = quizSession.userAnswers.map((answer, index) => {
+            if (answer && answer.questionId && answer.selectedOption) {
+                return {
+                    questionId: answer.questionId,
+                    selectedOption: answer.selectedOption,
+                    selectedIndex: answer.selectedIndex,
+                    questionIndex: index
+                };
+            }
+            return null;
         }).filter(answer => answer !== null);
         
-        console.log('用户完整答案:', userAnswers);
+        console.log('本地答案数据:', userAnswers);
+        console.log('答案总数:', userAnswers.length);
         
-        // 将答案传递给好友排行榜
+        // 将完整答案数据传递给好友排行榜
         this.updateFriendsTabWithAnswers(userAnswers);
-        
-        // 保存答案到本地存储（可选）
-        try {
-            wx.setStorageSync('lastQuizAnswers', {
-                answers: userAnswers,
-                timestamp: Date.now(),
-                totalQuestions: userAnswers.length
-            });
-            console.log('答案已保存到本地存储');
-        } catch (error) {
-            console.error('保存答案到本地存储失败:', error);
-        }
     }
     
     /**

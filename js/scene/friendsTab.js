@@ -21,11 +21,21 @@ export default class FriendsTab {
 
     /**
      * 设置用户答案数据（从答题完成后调用）
-     * @param {Array} answers - 用户的答案数组
+     * @param {Array} answers - 用户的完整答案数组
      */
     setUserAnswers(answers) {
         this.userAnswers = answers || [];
-        console.log('FriendsTab: 接收到用户答案:', this.userAnswers);
+        console.log('FriendsTab: 接收到用户答案数据:');
+        console.log('- 答案总数:', this.userAnswers.length);
+        console.log('- 答案详情:', this.userAnswers);
+        
+        // 验证答案数据结构
+        if (this.userAnswers.length > 0) {
+            const firstAnswer = this.userAnswers[0];
+            console.log('- 第一个答案结构:', firstAnswer);
+            console.log('- 是否包含questionId:', !!firstAnswer.questionId);
+            console.log('- 是否包含selectedOption:', !!firstAnswer.selectedOption);
+        }
         
         // 保存答案到微信云存储
         this.saveAnswersToCloud(answers);
@@ -38,25 +48,48 @@ export default class FriendsTab {
 
     /**
      * 保存答案到微信云存储
-     * @param {Array} answers - 答案数组
+     * @param {Array} answers - 完整的答案数组，包含题目ID和选择信息
      */
     saveAnswersToCloud(answers) {
         if (typeof wx.setUserCloudStorage === 'function' && answers && answers.length > 0) {
-            const answersString = JSON.stringify(answers);
+            // 确保保存完整的答案数据结构
+            const completeAnswersData = {
+                answers: answers, // 保存完整的答案对象数组
+                timestamp: Date.now(),
+                totalQuestions: answers.length,
+                version: '1.0' // 添加版本号以便后续兼容性处理
+            };
+            
+            const answersString = JSON.stringify(completeAnswersData);
             const timestamp = Date.now();
             
-            wx.setUserCloudStorage({
-                KVDataList: [
-                    { key: 'answers', value: answersString },
-                    { key: 'timestamp', value: timestamp.toString() },
-                    { key: 'totalQuestions', value: answers.length.toString() }
-                ],
-                success: () => {
-                    console.log('答案保存到云存储成功');
-                },
+            console.log('🚀 准备保存到云存储的答案数据:');
+             console.log('- 答案总数:', answers.length);
+             console.log('- 完整数据结构:', completeAnswersData);
+             console.log('- 第一个答案示例:', answers[0]);
+             console.log('- 最后一个答案示例:', answers[answers.length - 1]);
+             
+             wx.setUserCloudStorage({
+                 KVDataList: [
+                     { key: 'completeAnswers', value: answersString }, // 使用新的key保存完整数据
+                     { key: 'answers', value: JSON.stringify(answers.map(a => a.selectedOption)) }, // 保持兼容性
+                     { key: 'timestamp', value: timestamp.toString() },
+                     { key: 'totalQuestions', value: answers.length.toString() }
+                 ],
+                 success: () => {
+                     console.log('✅ 完整答题记录保存到云存储成功！');
+                     console.log('📊 答题记录详情: 共', answers.length, '道题目');
+                     console.log('🔍 数据来源: 后端接口getAnswerHistory');
+                 },
                 fail: (error) => {
                     console.error('答案保存到云存储失败:', error);
                 }
+            });
+        } else {
+            console.warn('无法保存答案到云存储：', {
+                hasWxFunction: typeof wx.setUserCloudStorage === 'function',
+                hasAnswers: !!(answers && answers.length > 0),
+                answersLength: answers ? answers.length : 0
             });
         }
     }

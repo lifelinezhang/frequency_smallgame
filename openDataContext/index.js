@@ -69,16 +69,27 @@ function initUI() {
 
 /**
  * 获取好友答案数据并计算相似度
- * @param {Array} userAnswers - 当前用户的答案
+ * @param {Array} userAnswers - 当前用户的完整答案数据
  */
 function getFriendsSimilarityRanking(userAnswers) {
     console.log('开始获取好友答案数据，用户答案:', userAnswers);
     currentUserAnswers = userAnswers;
     
     wx.getFriendCloudStorage({
-        keyList: ['answers', 'timestamp', 'totalQuestions'],
+        keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'], // 添加completeAnswers字段
         success: res => {
-            console.log('获取好友数据成功:', res);
+            console.log('🔍 开放域获取好友数据成功:');
+            console.log('- 好友总数:', res.data.length);
+            console.log('- 原始数据:', res.data);
+            
+            // 详细检查每个好友的数据
+            res.data.forEach((friend, index) => {
+                console.log(`好友${index + 1} (${friend.nickname}):`);
+                friend.KVDataList.forEach(kv => {
+                    console.log(`  - ${kv.key}: ${kv.value ? kv.value.substring(0, 100) + (kv.value.length > 100 ? '...' : '') : 'null'}`);
+                });
+            });
+            
             friendsData = processFriendsAnswers(res.data);
             calculateSimilarity();
             drawSimilarityRankingList();
@@ -97,15 +108,43 @@ function getFriendsSimilarityRanking(userAnswers) {
  */
 function processFriendsAnswers(rawData) {
     const processedData = rawData.map(friend => {
+        const completeAnswersData = friend.KVDataList.find(kv => kv.key === 'completeAnswers');
         const answersData = friend.KVDataList.find(kv => kv.key === 'answers');
         const timestampData = friend.KVDataList.find(kv => kv.key === 'timestamp');
         const totalQuestionsData = friend.KVDataList.find(kv => kv.key === 'totalQuestions');
         
         let answers = [];
+        let completeAnswers = null;
+        
         try {
-            answers = answersData ? JSON.parse(answersData.value) : [];
+            console.log(`📋 处理好友 ${friend.nickname} 的数据:`);
+            console.log('- completeAnswersData存在:', !!completeAnswersData);
+            console.log('- answersData存在:', !!answersData);
+            
+            // 优先使用新的完整答案数据格式
+            if (completeAnswersData) {
+                console.log('- completeAnswers原始值:', completeAnswersData.value);
+                completeAnswers = JSON.parse(completeAnswersData.value);
+                answers = completeAnswers.answers || [];
+                console.log('✅ 使用完整答案数据，好友:', friend.nickname);
+                console.log('- 解析后的answers:', answers);
+                console.log('- 答案数:', answers.length);
+            } else if (answersData) {
+                console.log('- answers原始值:', answersData.value);
+                // 回退到旧格式（仅选项）
+                const simpleAnswers = JSON.parse(answersData.value);
+                answers = simpleAnswers.map((option, index) => ({
+                    questionIndex: index,
+                    selectedOption: option,
+                    questionId: null // 旧数据没有questionId
+                }));
+                console.log('⚠️ 使用简单答案数据，好友:', friend.nickname, '答案数:', answers.length);
+            } else {
+                console.log('❌ 没有找到任何答案数据，好友:', friend.nickname);
+            }
         } catch (e) {
-            console.error('解析好友答案失败:', e);
+            console.error('❌ 解析好友答案失败:', friend.nickname, e);
+            console.error('- 错误详情:', e.message);
             answers = [];
         }
         
@@ -114,11 +153,13 @@ function processFriendsAnswers(rawData) {
             nickname: friend.nickname,
             avatarUrl: friend.avatarUrl,
             answers: answers,
+            completeAnswers: completeAnswers, // 保存完整数据引用
             timestamp: timestampData ? parseInt(timestampData.value) || 0 : 0,
             totalQuestions: totalQuestionsData ? parseInt(totalQuestionsData.value) || 0 : 0
         };
     });
     
+    console.log('处理好友数据完成，共', processedData.length, '个好友');
     return processedData;
 }
 
@@ -151,12 +192,13 @@ function calculateSimilarity() {
 
 /**
  * 计算两个答案数组的相似度
- * @param {Array} answers1 - 第一个答案数组
- * @param {Array} answers2 - 第二个答案数组
+ * @param {Array} answers1 - 第一个答案数组（用户答案）
+ * @param {Array} answers2 - 第二个答案数组（好友答案）
  * @returns {number} 相似度 (0-1之间)
  */
 function calculateAnswerSimilarity(answers1, answers2) {
     if (!answers1 || !answers2 || answers1.length === 0 || answers2.length === 0) {
+        console.log('答案数组为空，相似度为0');
         return 0;
     }
     
@@ -167,7 +209,10 @@ function calculateAnswerSimilarity(answers1, answers2) {
     
     // 比较相同位置的答案
     for (let i = 0; i < minLength; i++) {
-        if (answers1[i] === answers2[i]) {
+        const answer1 = getAnswerOption(answers1[i]);
+        const answer2 = getAnswerOption(answers2[i]);
+        
+        if (answer1 && answer2 && answer1 === answer2) {
             sameCount++;
         }
     }
@@ -175,7 +220,38 @@ function calculateAnswerSimilarity(answers1, answers2) {
     // 计算相似度：相同答案数 / 总题目数
     const similarity = sameCount / maxLength;
     
+    console.log('相似度计算:', {
+        sameCount,
+        maxLength,
+        similarity,
+        answers1Length: answers1.length,
+        answers2Length: answers2.length
+    });
+    
     return similarity;
+}
+
+/**
+ * 从答案对象中提取选项
+ * @param {*} answer - 答案对象或字符串
+ * @returns {string|null} 选项字符串
+ */
+function getAnswerOption(answer) {
+    if (!answer) {
+        return null;
+    }
+    
+    // 如果是对象，提取selectedOption字段
+    if (typeof answer === 'object' && answer.selectedOption) {
+        return answer.selectedOption;
+    }
+    
+    // 如果是字符串，直接返回
+    if (typeof answer === 'string') {
+        return answer;
+    }
+    
+    return null;
 }
 
 /**

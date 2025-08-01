@@ -14,7 +14,7 @@ context.scale(ratio, ratio);
 // 排行榜数据
 let friendsData = [];
 let myInfo = {};
-let currentUserAnswers = []; // 当前用户的答案
+let currentUserAnswers = []; // 当前用户的答案（从微信云存储获取）
 let similarityRanking = []; // 相似度排行榜
 
 /**
@@ -68,36 +68,201 @@ function initUI() {
 }
 
 /**
- * 获取好友答案数据并计算相似度
- * @param {Array} userAnswers - 当前用户的完整答案数据
+ * 获取当前用户的云存储答案数据
  */
-function getFriendsSimilarityRanking(userAnswers) {
-    console.log('开始获取好友答案数据，用户答案:', userAnswers);
-    currentUserAnswers = userAnswers;
-    
-    wx.getFriendCloudStorage({
-        keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'], // 添加completeAnswers字段
-        success: res => {
-            console.log('🔍 开放域获取好友数据成功:');
-            console.log('- 好友总数:', res.data.length);
-            console.log('- 原始数据:', res.data);
-            
-            // 详细检查每个好友的数据
-            res.data.forEach((friend, index) => {
-                console.log(`好友${index + 1} (${friend.nickname}):`);
-                friend.KVDataList.forEach(kv => {
-                    console.log(`  - ${kv.key}: ${kv.value ? kv.value.substring(0, 100) + (kv.value.length > 100 ? '...' : '') : 'null'}`);
-                });
-            });
-            
-            friendsData = processFriendsAnswers(res.data);
-            calculateSimilarity();
-            drawSimilarityRankingList();
-        },
-        fail: res => {
-            console.error('获取好友数据失败:', res);
-            drawError('获取排行榜数据失败');
+function getCurrentUserAnswers() {
+    return new Promise((resolve, reject) => {
+        console.log('🔍 开始获取当前用户云存储数据');
+        console.log('- wx.getUserCloudStorage 是否存在:', typeof wx.getUserCloudStorage);
+        
+        // 检查是否在开放数据域中支持getUserCloudStorage
+        if (typeof wx.getUserCloudStorage !== 'function') {
+            console.warn('⚠️ 开放数据域不支持wx.getUserCloudStorage，尝试其他方法');
+            // 在开放数据域中，可能需要通过getFriendCloudStorage获取自己的数据
+            getCurrentUserAnswersFromFriends().then(resolve).catch(() => resolve([]));
+            return;
         }
+        
+        wx.getUserCloudStorage({
+            keyList: ['completeAnswers', 'answers'],
+            success: res => {
+                console.log('🔍 获取当前用户云存储数据成功:');
+                console.log('- 响应对象:', res);
+                console.log('- KVDataList类型:', typeof res.KVDataList);
+                console.log('- KVDataList是否为数组:', Array.isArray(res.KVDataList));
+                console.log('- KVDataList长度:', res.KVDataList ? res.KVDataList.length : 'undefined');
+                console.log('- KVDataList内容:', res.KVDataList);
+                
+                let userAnswers = [];
+                
+                try {
+                    if (!res.KVDataList || !Array.isArray(res.KVDataList)) {
+                        console.warn('⚠️ KVDataList无效，返回空数组');
+                        resolve([]);
+                        return;
+                    }
+                    
+                    // 优先使用completeAnswers
+                    const completeAnswersData = res.KVDataList.find(kv => kv.key === 'completeAnswers');
+                    if (completeAnswersData && completeAnswersData.value) {
+                        console.log('✅ 找到completeAnswers数据:', completeAnswersData.value.substring(0, 200) + '...');
+                        const completeData = JSON.parse(completeAnswersData.value);
+                        
+                        // 检查数据格式并提取答案数组
+                        if (Array.isArray(completeData)) {
+                            userAnswers = completeData;
+                        } else if (completeData.answers && Array.isArray(completeData.answers)) {
+                            userAnswers = completeData.answers;
+                            console.log('📦 从completeAnswers对象中提取answers数组');
+                        } else {
+                            console.warn('⚠️ completeAnswers数据格式不正确');
+                            userAnswers = [];
+                        }
+                        
+                        console.log('✅ 解析completeAnswers成功，数量:', userAnswers.length);
+                    } else {
+                        console.log('⚠️ 未找到completeAnswers，尝试answers');
+                        // 回退到answers
+                        const answersData = res.KVDataList.find(kv => kv.key === 'answers');
+                        if (answersData && answersData.value) {
+                            console.log('✅ 找到answers数据:', answersData.value.substring(0, 200) + '...');
+                            const simpleAnswers = JSON.parse(answersData.value);
+                            userAnswers = simpleAnswers.map((answer, index) => ({
+                                questionId: index + 1,
+                                selectedOption: answer
+                            }));
+                            console.log('✅ 解析answers成功，数量:', userAnswers.length);
+                        } else {
+                            console.warn('⚠️ 未找到任何答案数据');
+                        }
+                    }
+                    
+                    console.log('📊 最终用户答案数据:', userAnswers);
+                    resolve(userAnswers);
+                } catch (error) {
+                    console.error('❌ 解析当前用户答案数据失败:', error);
+                    resolve([]);
+                }
+            },
+            fail: res => {
+                console.error('❌ 获取当前用户云存储数据失败:', res);
+                // 尝试备用方法
+                getCurrentUserAnswersFromFriends().then(resolve).catch(() => resolve([]));
+            }
+        });
+    });
+}
+
+/**
+ * 从好友数据中获取当前用户的答案（备用方法）
+ */
+function getCurrentUserAnswersFromFriends() {
+    return new Promise((resolve, reject) => {
+        console.log('🔄 尝试从好友数据中获取当前用户答案');
+        
+        wx.getFriendCloudStorage({
+            keyList: ['completeAnswers', 'answers'],
+            success: res => {
+                console.log('📥 获取好友数据成功，查找当前用户');
+                
+                // 查找当前用户的数据（通常是第一个或者有特殊标识）
+                const currentUserData = res.data.find(friend => {
+                    // 可能需要根据实际情况调整判断逻辑
+                    return friend.openid === wx.getStorageSync('openid') || 
+                           friend.nickname === wx.getStorageSync('nickname');
+                });
+                
+                if (currentUserData) {
+                     console.log('✅ 找到当前用户数据:', currentUserData);
+                     // 解析当前用户的答案数据
+                     const completeAnswersData = currentUserData.KVDataList.find(kv => kv.key === 'completeAnswers');
+                     if (completeAnswersData && completeAnswersData.value) {
+                         const completeData = JSON.parse(completeAnswersData.value);
+                         
+                         // 检查数据格式并提取答案数组
+                         let userAnswers = [];
+                         if (Array.isArray(completeData)) {
+                             userAnswers = completeData;
+                         } else if (completeData.answers && Array.isArray(completeData.answers)) {
+                             userAnswers = completeData.answers;
+                             console.log('📦 从好友数据的completeAnswers对象中提取answers数组');
+                         }
+                         
+                         resolve(userAnswers);
+                     } else {
+                         const answersData = currentUserData.KVDataList.find(kv => kv.key === 'answers');
+                         if (answersData && answersData.value) {
+                             const simpleAnswers = JSON.parse(answersData.value);
+                             const userAnswers = simpleAnswers.map((answer, index) => ({
+                                 questionId: index + 1,
+                                 selectedOption: answer
+                             }));
+                             resolve(userAnswers);
+                         } else {
+                             resolve([]);
+                         }
+                     }
+                } else {
+                    console.warn('⚠️ 在好友数据中未找到当前用户');
+                    resolve([]);
+                }
+            },
+            fail: res => {
+                console.error('❌ 获取好友数据失败:', res);
+                reject(res);
+            }
+        });
+    });
+}
+
+/**
+ * 获取好友答案数据并计算相似度
+ */
+function getFriendsSimilarityRanking() {
+    console.log('🚀 开始获取好友答案数据');
+    
+    // 先获取当前用户的答案数据
+    getCurrentUserAnswers().then(userAnswers => {
+        console.log('📥 getCurrentUserAnswers Promise resolved');
+        console.log('- 返回的userAnswers类型:', typeof userAnswers);
+        console.log('- 返回的userAnswers是否为数组:', Array.isArray(userAnswers));
+        console.log('- 返回的userAnswers长度:', userAnswers ? userAnswers.length : 'undefined');
+        console.log('- 返回的userAnswers内容:', userAnswers);
+        
+        currentUserAnswers = userAnswers;
+        console.log('✅ 当前用户答案已设置到全局变量');
+        console.log('- currentUserAnswers类型:', typeof currentUserAnswers);
+        console.log('- currentUserAnswers是否为数组:', Array.isArray(currentUserAnswers));
+        console.log('- currentUserAnswers长度:', currentUserAnswers ? currentUserAnswers.length : 'undefined');
+        
+        // 然后获取好友数据
+        wx.getFriendCloudStorage({
+            keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'],
+            success: res => {
+                console.log('🔍 开放域获取好友数据成功:');
+                console.log('- 好友总数:', res.data.length);
+                console.log('- 原始数据:', res.data);
+                
+                // 详细检查每个好友的数据
+                res.data.forEach((friend, index) => {
+                    console.log(`好友${index + 1} (${friend.nickname}):`);
+                    friend.KVDataList.forEach(kv => {
+                        console.log(`  - ${kv.key}: ${kv.value ? kv.value.substring(0, 100) + (kv.value.length > 100 ? '...' : '') : 'null'}`);
+                    });
+                });
+                
+                friendsData = processFriendsAnswers(res.data);
+                calculateSimilarity();
+                drawSimilarityRankingList();
+            },
+            fail: res => {
+                console.error('获取好友数据失败:', res);
+                drawError('获取排行榜数据失败');
+            }
+        });
+    }).catch(error => {
+        console.error('❌ getCurrentUserAnswers Promise rejected:', error);
+        drawError('获取用户答案数据失败');
     });
 }
 
@@ -167,10 +332,40 @@ function processFriendsAnswers(rawData) {
  * 计算答案相似度
  */
 function calculateSimilarity() {
-    console.log('开始计算相似度，当前用户答案:', currentUserAnswers);
+    console.log('🎯 开始计算相似度');
+    console.log('- 当前用户答案类型:', typeof currentUserAnswers);
+    console.log('- 当前用户答案是否为数组:', Array.isArray(currentUserAnswers));
+    console.log('- 当前用户答案长度:', currentUserAnswers ? currentUserAnswers.length : 'undefined');
+    console.log('- 当前用户答案内容:', currentUserAnswers);
+    console.log('- 好友数据数量:', friendsData.length);
     
-    similarityRanking = friendsData.map(friend => {
-        const similarity = calculateAnswerSimilarity(currentUserAnswers, friend.answers);
+    // 处理当前用户答案数据格式
+    let userAnswersArray = [];
+    if (currentUserAnswers) {
+        if (Array.isArray(currentUserAnswers)) {
+            // 如果已经是数组格式
+            userAnswersArray = currentUserAnswers;
+        } else if (currentUserAnswers.answers && Array.isArray(currentUserAnswers.answers)) {
+            // 如果是包含answers字段的对象格式
+            userAnswersArray = currentUserAnswers.answers;
+            console.log('✅ 从对象中提取answers数组，长度:', userAnswersArray.length);
+        } else {
+            console.error('❌ 无法识别的用户答案数据格式');
+            return;
+        }
+    }
+    
+    // 验证处理后的用户答案数据
+    if (!userAnswersArray || userAnswersArray.length === 0) {
+        console.error('❌ 当前用户答案数据无效，无法计算相似度');
+        return;
+    }
+    
+    console.log('📊 处理后的用户答案数组:', userAnswersArray);
+    
+    similarityRanking = friendsData.map((friend, index) => {
+        console.log(`\n🔄 计算与好友 ${friend.nickname} 的相似度 (${index + 1}/${friendsData.length})`);
+        const similarity = calculateAnswerSimilarity(userAnswersArray, friend.answers);
         
         return {
             ...friend,
@@ -187,7 +382,7 @@ function calculateSimilarity() {
         return a.timestamp - b.timestamp;
     });
     
-    console.log('相似度计算完成:', similarityRanking);
+    console.log('✅ 相似度计算完成，排行榜:', similarityRanking);
 }
 
 /**
@@ -197,8 +392,26 @@ function calculateSimilarity() {
  * @returns {number} 相似度 (0-1之间)
  */
 function calculateAnswerSimilarity(answers1, answers2) {
-    if (!answers1 || !answers2 || answers1.length === 0 || answers2.length === 0) {
-        console.log('答案数组为空，相似度为0');
+    // 详细的调试信息
+    console.log('🔍 相似度计算输入参数:');
+    console.log('- answers1 类型:', typeof answers1, '值:', answers1);
+    console.log('- answers2 类型:', typeof answers2, '值:', answers2);
+    console.log('- answers1 是否为数组:', Array.isArray(answers1));
+    console.log('- answers2 是否为数组:', Array.isArray(answers2));
+    
+    // 检查输入参数的有效性
+    if (!answers1 || !Array.isArray(answers1)) {
+        console.warn('⚠️ answers1 无效:', answers1);
+        return 0;
+    }
+    
+    if (!answers2 || !Array.isArray(answers2)) {
+        console.warn('⚠️ answers2 无效:', answers2);
+        return 0;
+    }
+    
+    if (answers1.length === 0 || answers2.length === 0) {
+        console.log('📝 答案数组为空，相似度为0');
         return 0;
     }
     
@@ -212,18 +425,25 @@ function calculateAnswerSimilarity(answers1, answers2) {
         const answer1 = getAnswerOption(answers1[i]);
         const answer2 = getAnswerOption(answers2[i]);
         
+        console.log(`比较第${i+1}题: "${answer1}" vs "${answer2}"`);
+        
         if (answer1 && answer2 && answer1 === answer2) {
             sameCount++;
+            console.log(`✅ 第${i+1}题答案相同`);
+        } else {
+            console.log(`❌ 第${i+1}题答案不同`);
         }
     }
     
     // 计算相似度：相同答案数 / 总题目数
-    const similarity = sameCount / maxLength;
+    const similarity = maxLength > 0 ? sameCount / maxLength : 0;
     
-    console.log('相似度计算:', {
+    console.log('📊 相似度计算结果:', {
         sameCount,
         maxLength,
+        minLength,
         similarity,
+        similarityPercentage: Math.round(similarity * 100) + '%',
         answers1Length: answers1.length,
         answers2Length: answers2.length
     });
@@ -418,9 +638,9 @@ wx.onMessage(data => {
     switch (data.type) {
         case 'similarity':
             if (data.action === 'showSimilarityRanking') {
-                getFriendsSimilarityRanking(data.userAnswers || []);
+                getFriendsSimilarityRanking();
             } else if (data.action === 'updateSimilarityRanking') {
-                getFriendsSimilarityRanking(data.userAnswers || []);
+                getFriendsSimilarityRanking();
             }
             break;
         default:

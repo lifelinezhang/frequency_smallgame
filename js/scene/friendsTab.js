@@ -102,12 +102,11 @@ export default class FriendsTab {
         console.log('更新用户答案并刷新排行榜:', answers);
         this.userAnswers = answers;
         
-        // 通知开放数据域更新排行榜
+        // 通知开放数据域更新排行榜（不再传递userAnswers，开放域会自己从云存储获取）
         if (this.openDataContext) {
             this.openDataContext.postMessage({
                 type: 'similarity',
-                action: 'updateSimilarityRanking',
-                userAnswers: answers
+                action: 'updateSimilarityRanking'
             });
         }
     }
@@ -128,11 +127,10 @@ export default class FriendsTab {
                 this.openDataContext = wx.getOpenDataContext();
                 console.log('获取开放数据域成功');
                 
-                // 向开放数据域发送用户答案和显示排行榜的消息
+                // 向开放数据域发送显示排行榜的消息（不再传递userAnswers，开放域会自己从云存储获取）
                 this.openDataContext.postMessage({
                     type: 'similarity',
-                    action: 'showSimilarityRanking',
-                    userAnswers: this.userAnswers
+                    action: 'showSimilarityRanking'
                 });
                 
                 // 显示开放数据域的内容

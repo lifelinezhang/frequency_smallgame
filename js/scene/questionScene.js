@@ -187,14 +187,48 @@ export default class QuestionPage{
             if (!quizSession.userAnswers) {
                 quizSession.userAnswers = [];
             }
+            
+            // 确保数组长度足够
+            while (quizSession.userAnswers.length <= quizSession.currentIndex) {
+                quizSession.userAnswers.push(null);
+            }
+            
             quizSession.userAnswers[quizSession.currentIndex] = {
                 questionId: currentQuestion.id,
                 selectedOption: selectedOptionKey,
-                selectedIndex: selectedIndex
+                selectedIndex: selectedIndex,
+                timestamp: Date.now()
             };
+            
+            console.log('当前答案已保存，总答案数:', quizSession.userAnswers.length);
+            
+            // 如果是最后一题，额外处理
+            const totalQuestions = quizSession.questions.length;
+            if (quizSession.currentIndex === totalQuestions - 1) {
+                console.log('这是最后一题，准备完成答题');
+                this.prepareQuizCompletion();
+            }
             
         } catch (error) {
             console.error('提交答案失败:', error);
+        }
+    }
+    
+    /**
+     * 准备答题完成的处理
+     */
+    prepareQuizCompletion() {
+        const quizSession = DataStore.getInstance().quizSession;
+        if (quizSession && quizSession.userAnswers) {
+            console.log('答题即将完成，用户答案:', quizSession.userAnswers);
+            
+            // 验证答案完整性
+            const validAnswers = quizSession.userAnswers.filter(answer => answer !== null);
+            console.log('有效答案数:', validAnswers.length, '总题目数:', quizSession.questions.length);
+            
+            // 标记答题完成状态
+            quizSession.isCompleted = true;
+            quizSession.completedAt = Date.now();
         }
     }
     

@@ -948,6 +948,257 @@ GET /question/getAnswerHistory
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListFreqUserAnswer](#schemaresponsedatalistfrequseranswer)|
 
+# 同频度管理
+
+## POST 添加好友
+
+POST /api/frequency/add-friend
+
+添加好友
+添加好友关系，支持传入用户ID或OpenID
+
+> Body 请求参数
+
+```json
+{
+  "friendId": 0,
+  "friendOpenId": "string"
+}
+```
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|body|body|[AddFriendCommand](#schemaaddfriendcommand)| 否 |none|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": false
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataBoolean](#schemaresponsedataboolean)|
+
+## DELETE 删除好友
+
+DELETE /api/frequency/remove-friend/{friendId}
+
+删除好友
+删除好友关系
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|friendId|path|integer| 是 |好友ID|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": false
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataBoolean](#schemaresponsedataboolean)|
+
+## POST 计算同频度
+
+POST /api/frequency/calculate
+
+计算同频度
+计算与指定用户的同频度
+
+> Body 请求参数
+
+```json
+{
+  "targetUserId": 0
+}
+```
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|body|body|[CalculateFrequencyCommand](#schemacalculatefrequencycommand)| 否 |none|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": {
+    "id": 0,
+    "firstCustId": 0,
+    "firstCustNickname": "",
+    "firstCustAvatar": "",
+    "secondCustId": 0,
+    "secondCustNickname": "",
+    "secondCustAvatar": "",
+    "isFriend": 0,
+    "frequencyScore": 0,
+    "frequencyDesc": "",
+    "createTime": ""
+  }
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataFrequencyRelationVO](#schemaresponsedatafrequencyrelationvo)|
+
+## GET 获取好友列表
+
+GET /api/frequency/friends
+
+获取好友列表
+获取当前用户的好友列表
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": [
+    {
+      "id": 0,
+      "firstCustId": 0,
+      "firstCustNickname": "",
+      "firstCustAvatar": "",
+      "secondCustId": 0,
+      "secondCustNickname": "",
+      "secondCustAvatar": "",
+      "isFriend": 0,
+      "frequencyScore": 0,
+      "frequencyDesc": "",
+      "createTime": ""
+    }
+  ]
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListFrequencyRelationVO](#schemaresponsedatalistfrequencyrelationvo)|
+
+## GET 获取同频度排行榜
+
+GET /api/frequency/ranking
+
+获取同频度排行榜
+获取与当前用户同频度最高的用户排行榜
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|limit|query|integer| 否 |限制数量，默认10|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": [
+    {
+      "id": 0,
+      "firstCustId": 0,
+      "firstCustNickname": "",
+      "firstCustAvatar": "",
+      "secondCustId": 0,
+      "secondCustNickname": "",
+      "secondCustAvatar": "",
+      "isFriend": 0,
+      "frequencyScore": 0,
+      "frequencyDesc": "",
+      "createTime": ""
+    }
+  ]
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListFrequencyRelationVO](#schemaresponsedatalistfrequencyrelationvo)|
+
+## GET 获取同频度关系
+
+GET /api/frequency/relation/{targetUserId}
+
+获取同频度关系
+获取与指定用户的同频度关系信息
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|targetUserId|path|integer| 是 |目标用户ID|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+  "code": "",
+  "msg": "",
+  "data": {
+    "id": 0,
+    "firstCustId": 0,
+    "firstCustNickname": "",
+    "firstCustAvatar": "",
+    "secondCustId": 0,
+    "secondCustNickname": "",
+    "secondCustAvatar": "",
+    "isFriend": 0,
+    "frequencyScore": 0,
+    "frequencyDesc": "",
+    "createTime": ""
+  }
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataFrequencyRelationVO](#schemaresponsedatafrequencyrelationvo)|
+
 # 数据模型
 
 <h2 id="tocS_AdVO">AdVO</h2>
@@ -1804,4 +2055,160 @@ GET /question/getAnswerHistory
 |code|string|false|none||返回码|
 |msg|string|false|none||返回描述|
 |data|[[FreqUserAnswer](#schemafrequseranswer)]|false|none||none|
+
+<h2 id="tocS_AddFriendCommand">AddFriendCommand</h2>
+
+<a id="schemaaddfriendcommand"></a>
+<a id="schema_AddFriendCommand"></a>
+<a id="tocSaddfriendcommand"></a>
+<a id="tocsaddfriendcommand"></a>
+
+```json
+{
+  "friendId": 0,
+  "friendOpenId": "string"
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|friendId|integer(int64)|false|none||要添加的好友ID（与friendOpenId二选一）|
+|friendOpenId|string|false|none||要添加的好友OpenID（与friendId二选一）|
+
+<h2 id="tocS_FrequencyRelationVO">FrequencyRelationVO</h2>
+
+<a id="schemafrequencyrelationvo"></a>
+<a id="schema_FrequencyRelationVO"></a>
+<a id="tocSfrequencyrelationvo"></a>
+<a id="tocsfrequencyrelationvo"></a>
+
+```json
+{
+  "id": 0,
+  "firstCustId": 0,
+  "firstCustNickname": "string",
+  "firstCustAvatar": "string",
+  "secondCustId": 0,
+  "secondCustNickname": "string",
+  "secondCustAvatar": "string",
+  "isFriend": -127,
+  "frequencyScore": 0,
+  "frequencyDesc": "string",
+  "createTime": "string"
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|id|integer(int64)|false|none||关系ID|
+|firstCustId|integer(int64)|false|none||第一个客户ID|
+|firstCustNickname|string|false|none||第一个客户昵称|
+|firstCustAvatar|string|false|none||第一个客户头像|
+|secondCustId|integer(int64)|false|none||第二个客户ID|
+|secondCustNickname|string|false|none||第二个客户昵称|
+|secondCustAvatar|string|false|none||第二个客户头像|
+|isFriend|integer|false|none||是否是好友 0-不是 1-是|
+|frequencyScore|number|false|none||同频度分数(0-100)|
+|frequencyDesc|string|false|none||同频度解析|
+|createTime|string|false|none||建立关系时间|
+
+<h2 id="tocS_ResponseDataFrequencyRelationVO">ResponseDataFrequencyRelationVO</h2>
+
+<a id="schemaresponsedatafrequencyrelationvo"></a>
+<a id="schema_ResponseDataFrequencyRelationVO"></a>
+<a id="tocSresponsedatafrequencyrelationvo"></a>
+<a id="tocsresponsedatafrequencyrelationvo"></a>
+
+```json
+{
+  "code": "string",
+  "msg": "string",
+  "data": {
+    "id": 0,
+    "firstCustId": 0,
+    "firstCustNickname": "string",
+    "firstCustAvatar": "string",
+    "secondCustId": 0,
+    "secondCustNickname": "string",
+    "secondCustAvatar": "string",
+    "isFriend": -127,
+    "frequencyScore": 0,
+    "frequencyDesc": "string",
+    "createTime": "string"
+  }
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|code|string|false|none||返回码|
+|msg|string|false|none||返回描述|
+|data|[FrequencyRelationVO](#schemafrequencyrelationvo)|false|none||none|
+
+<h2 id="tocS_CalculateFrequencyCommand">CalculateFrequencyCommand</h2>
+
+<a id="schemacalculatefrequencycommand"></a>
+<a id="schema_CalculateFrequencyCommand"></a>
+<a id="tocScalculatefrequencycommand"></a>
+<a id="tocscalculatefrequencycommand"></a>
+
+```json
+{
+  "targetUserId": 0
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|targetUserId|integer(int64)|true|none||要计算同频度的目标用户ID|
+
+<h2 id="tocS_ResponseDataListFrequencyRelationVO">ResponseDataListFrequencyRelationVO</h2>
+
+<a id="schemaresponsedatalistfrequencyrelationvo"></a>
+<a id="schema_ResponseDataListFrequencyRelationVO"></a>
+<a id="tocSresponsedatalistfrequencyrelationvo"></a>
+<a id="tocsresponsedatalistfrequencyrelationvo"></a>
+
+```json
+{
+  "code": "string",
+  "msg": "string",
+  "data": [
+    {
+      "id": 0,
+      "firstCustId": 0,
+      "firstCustNickname": "string",
+      "firstCustAvatar": "string",
+      "secondCustId": 0,
+      "secondCustNickname": "string",
+      "secondCustAvatar": "string",
+      "isFriend": -127,
+      "frequencyScore": 0,
+      "frequencyDesc": "string",
+      "createTime": "string"
+    }
+  ]
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|code|string|false|none||返回码|
+|msg|string|false|none||返回描述|
+|data|[[FrequencyRelationVO](#schemafrequencyrelationvo)]|false|none||none|
 

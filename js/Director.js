@@ -92,21 +92,83 @@ export default class Director {
         this.toQuestionScene();
     }
     // 结果场景
+    // 结果场景
     showResultScene () {
+        // 答题完成，处理用户答案
+        this.handleQuizCompletion();
+        
         this.resultCanvas = wx.createCanvas();
         let resultCtx = this.resultCanvas.getContext('2d');
         this.resultCanvas.width = screenWidth * ratio;
         this.resultCanvas.height = screenHeight * ratio;
         let scales = screenWidth / 750;
         resultCtx.scale(ratio, ratio);
-
+    
         resultCtx.scale(scales, scales);
-
+    
         DataStore.getInstance().resultCanvas = this.resultCanvas;
         new ResultScene(resultCtx);
-
-        // new ResultScene(DataStore.getInstance().ctx);
+    
         DataStore.getInstance().currentCanvas = 'resultCanvas';
+    }
+    
+    /**
+     * 处理答题完成后的逻辑
+     * 将用户答案传递给好友排行榜
+     */
+    handleQuizCompletion() {
+        console.log('答题完成，开始处理用户答案');
+        
+        const quizSession = DataStore.getInstance().quizSession;
+        if (!quizSession || !quizSession.userAnswers) {
+            console.warn('没有找到用户答案数据');
+            return;
+        }
+        
+        // 提取用户的答案数组（只保留选择的选项）
+        const userAnswers = quizSession.userAnswers.map(answer => {
+            return answer ? answer.selectedOption : null;
+        }).filter(answer => answer !== null);
+        
+        console.log('用户完整答案:', userAnswers);
+        
+        // 将答案传递给好友排行榜
+        this.updateFriendsTabWithAnswers(userAnswers);
+        
+        // 保存答案到本地存储（可选）
+        try {
+            wx.setStorageSync('lastQuizAnswers', {
+                answers: userAnswers,
+                timestamp: Date.now(),
+                totalQuestions: userAnswers.length
+            });
+            console.log('答案已保存到本地存储');
+        } catch (error) {
+            console.error('保存答案到本地存储失败:', error);
+        }
+    }
+    
+    /**
+     * 更新好友标签页的答案数据
+     * @param {Array} userAnswers - 用户答案数组
+     */
+    updateFriendsTabWithAnswers(userAnswers) {
+        try {
+            // 获取TabScene实例
+            if (this.tabScene && this.tabScene.tabs && this.tabScene.tabs[1]) {
+                const friendsTab = this.tabScene.tabs[1];
+                if (friendsTab && typeof friendsTab.setUserAnswers === 'function') {
+                    console.log('更新好友标签页答案数据');
+                    friendsTab.setUserAnswers(userAnswers);
+                } else {
+                    console.warn('好友标签页未初始化或缺少setUserAnswers方法');
+                }
+            } else {
+                console.warn('TabScene或好友标签页未初始化');
+            }
+        } catch (error) {
+            console.error('更新好友标签页答案失败:', error);
+        }
     }
 
     // 添加返回TabScene的方法

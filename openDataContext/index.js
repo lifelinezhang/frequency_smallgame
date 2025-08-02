@@ -253,7 +253,7 @@ function getFriendsSimilarityRanking() {
                 
                 friendsData = processFriendsAnswers(res.data);
                 calculateSimilarity();
-                drawSimilarityRankingList();
+                // drawSimilarityRankingList() 已在 calculateSimilarity() 内部调用
             },
             fail: res => {
                 console.error('获取好友数据失败:', res);
@@ -383,6 +383,9 @@ function calculateSimilarity() {
     });
     
     console.log('✅ 相似度计算完成，排行榜:', similarityRanking);
+    
+    // 计算完成后立即绘制排行榜，确保界面及时更新
+    drawSimilarityRankingList();
 }
 
 /**
@@ -478,6 +481,8 @@ function getAnswerOption(answer) {
  * 绘制相似度排行榜列表
  */
 function drawSimilarityRankingList() {
+    console.log('🎨 开始绘制相似度排行榜，数据量:', similarityRanking.length);
+    
     // 清空画布
     context.clearRect(0, 0, screenWidth, screenHeight);
     
@@ -514,6 +519,26 @@ function drawSimilarityRankingList() {
         context.font = '16px Arial';
         context.textAlign = 'center';
         context.fillText('暂无好友答题数据', screenWidth / 2, screenHeight / 2);
+    }
+    
+    console.log('✅ 排行榜绘制完成');
+    
+    // 强制刷新画布显示，确保内容立即可见
+    try {
+        // 使用微信小游戏的画布刷新机制
+        if (typeof wx !== 'undefined' && wx.triggerGC) {
+            wx.triggerGC();
+        }
+        
+        // 触发重绘事件，确保画布内容更新
+        setTimeout(() => {
+            console.log('🔄 延迟刷新画布');
+            // 再次确保画布内容可见
+            context.save();
+            context.restore();
+        }, 50);
+    } catch (error) {
+        console.warn('⚠️ 画布刷新操作失败:', error);
     }
 }
 
@@ -638,9 +663,19 @@ wx.onMessage(data => {
     switch (data.type) {
         case 'similarity':
             if (data.action === 'showSimilarityRanking') {
+                console.log('📱 接收到显示排行榜消息，开始处理...');
                 getFriendsSimilarityRanking();
             } else if (data.action === 'updateSimilarityRanking') {
+                console.log('🔄 接收到更新排行榜消息，开始处理...');
                 getFriendsSimilarityRanking();
+            } else if (data.action === 'forceRefresh') {
+                // 强制刷新排行榜显示
+                console.log('🔄 强制刷新排行榜显示');
+                if (similarityRanking.length > 0) {
+                    drawSimilarityRankingList();
+                } else {
+                    getFriendsSimilarityRanking();
+                }
             }
             break;
         default:

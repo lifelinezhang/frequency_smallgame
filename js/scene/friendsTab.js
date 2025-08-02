@@ -16,6 +16,7 @@ export default class FriendsTab {
         this.isDataLoaded = false;
         this.openDataContext = null;
         this.userAnswers = []; // 存储用户答案
+        this.refreshTimer = null; // 刷新定时器
         console.log('FriendsTab 构造函数被调用');
     }
 
@@ -108,6 +109,15 @@ export default class FriendsTab {
                 type: 'similarity',
                 action: 'updateSimilarityRanking'
             });
+            
+            // 延迟一段时间后强制刷新，确保排行榜能及时显示
+            setTimeout(() => {
+                this.openDataContext.postMessage({
+                    type: 'similarity',
+                    action: 'forceRefresh'
+                });
+                console.log('已发送强制刷新消息');
+            }, 1000);
         }
     }
 
@@ -163,6 +173,43 @@ export default class FriendsTab {
             // 将开放数据域的内容绘制到主域
             this.ctx.drawImage(sharedCanvas, 0, 0, window.innerWidth, window.innerHeight);
             console.log('开放数据域内容已绘制到主域');
+        }
+        
+        // 启动持续刷新机制，确保开放数据域内容能及时显示
+        this.startRefreshLoop();
+    }
+    
+    /**
+     * 启动刷新循环，持续更新开放数据域内容
+     */
+    startRefreshLoop() {
+        // 清除之前的刷新循环
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+        }
+        
+        // 设置定时刷新，每100ms刷新一次
+        this.refreshTimer = setInterval(() => {
+            if (this.openDataContext && this.openDataContext.canvas) {
+                // 清空主域画布
+                this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                
+                // 重新绘制开放数据域内容
+                this.ctx.drawImage(this.openDataContext.canvas, 0, 0, window.innerWidth, window.innerHeight);
+            }
+        }, 100);
+        
+        console.log('开放数据域刷新循环已启动');
+    }
+    
+    /**
+     * 停止刷新循环
+     */
+    stopRefreshLoop() {
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
+            console.log('开放数据域刷新循环已停止');
         }
     }
 
@@ -226,5 +273,13 @@ export default class FriendsTab {
         if (this.openDataContext) {
             this.showOpenDataContext();
         }
+    }
+    
+    /**
+     * 清理资源，停止刷新循环
+     */
+    destroy() {
+        this.stopRefreshLoop();
+        console.log('FriendsTab 资源已清理');
     }
 }

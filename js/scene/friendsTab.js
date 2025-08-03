@@ -168,6 +168,8 @@ export default class FriendsTab {
      */
     showOpenDataContext() {
         if (!this.openDataContext) {
+            console.warn('⚠️ 开放数据域不存在，显示备用界面');
+            this.drawTestContent();
             return;
         }
 
@@ -183,25 +185,38 @@ export default class FriendsTab {
             console.log('- 画布高度:', sharedCanvas.height);
             console.log('- 目标区域:', window.innerWidth, 'x', window.innerHeight - 100);
             
-            // 计算正确的缩放比例
-            const targetWidth = window.innerWidth;
-            const targetHeight = window.innerHeight - 100;
-            
-            // 直接按照逻辑尺寸绘制，不进行额外缩放
-            this.ctx.drawImage(sharedCanvas, 0, 0, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
-            console.log('✅ 开放数据域内容已绘制到主域，尺寸:', targetWidth, 'x', targetHeight);
+            try {
+                // 计算正确的缩放比例
+                const targetWidth = window.innerWidth;
+                const targetHeight = window.innerHeight - 100;
+                
+                // 尝试多种绘制方式
+                // 方式1：直接绘制整个画布
+                this.ctx.drawImage(sharedCanvas, 0, 0);
+                console.log('✅ 方式1：直接绘制整个画布');
+                
+                // 方式2：按比例缩放绘制
+                // this.ctx.drawImage(sharedCanvas, 0, 0, sharedCanvas.width, sharedCanvas.height, 0, 0, targetWidth, targetHeight);
+                // console.log('✅ 方式2：按比例缩放绘制');
+                
+            } catch (error) {
+                console.error('❌ 绘制开放数据域失败:', error);
+                this.drawTestContent();
+            }
             
             // 强制刷新画布
             this.ctx.save();
             this.ctx.restore();
             
             // 添加调试边框确认绘制区域
-            this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(0, 0, targetWidth, targetHeight);
+            this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeRect(5, 5, window.innerWidth - 10, window.innerHeight - 110);
+            console.log('🔴 绘制红色调试边框');
             
         } else {
             console.error('❌ 无法获取开放数据域的共享画布');
+            this.drawTestContent();
         }
         
         // 启动持续刷新机制，确保开放数据域内容能及时显示
@@ -259,6 +274,52 @@ export default class FriendsTab {
         }
     }
 
+    /**
+     * 绘制测试内容（用于调试画布显示）
+     */
+    drawTestContent() {
+        console.log('🎨 绘制测试内容到主域画布');
+        
+        // 清空画布
+        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
+        
+        // 绘制背景
+        this.ctx.fillStyle = '#000080';
+        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight - 100);
+        
+        // 绘制测试标题
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('🏆 好友排行榜', window.innerWidth / 2, 40);
+        
+        // 绘制测试好友条目
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('1. canon', 20, 80);
+        
+        // 绘制测试相似度
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText('100%', window.innerWidth - 20, 80);
+        
+        // 绘制测试头像占位符
+        this.ctx.fillStyle = '#ff6b6b';
+        this.ctx.beginPath();
+        this.ctx.arc(60, 75, 15, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // 绘制调试信息
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('测试内容 - 如果能看到这个说明主域画布正常', window.innerWidth / 2, window.innerHeight - 130);
+        
+        console.log('✅ 测试内容绘制完成');
+    }
+    
     /**
      * 绘制备用界面
      */

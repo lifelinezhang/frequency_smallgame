@@ -6,9 +6,9 @@ const screenWidth = wx.getSystemInfoSync().screenWidth;
 const screenHeight = wx.getSystemInfoSync().screenHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
 
-// 设置画布尺寸
+// 设置画布尺寸，为底部tab栏预留空间（100px）
 sharedCanvas.width = screenWidth * ratio;
-sharedCanvas.height = screenHeight * ratio;
+sharedCanvas.height = (screenHeight - 100) * ratio;
 context.scale(ratio, ratio);
 
 // 排行榜数据
@@ -49,22 +49,23 @@ function getUserInfo() {
  * 初始化UI界面
  */
 function initUI() {
-    context.clearRect(0, 0, screenWidth, screenHeight);
+    const contentHeight = screenHeight - 100; // 为底部tab栏预留100px空间
+    context.clearRect(0, 0, screenWidth, contentHeight);
     
     // 设置背景
     context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillRect(0, 0, screenWidth, screenHeight);
+    context.fillRect(0, 0, screenWidth, contentHeight);
     
     // 绘制标题
     context.fillStyle = '#ffffff';
-    context.font = 'bold 28px Arial';
+    context.font = 'bold 14px Arial';
     context.textAlign = 'center';
-    context.fillText('好友相似度排行榜', screenWidth / 2, 60);
+    context.fillText('好友排行榜', screenWidth / 2, 20);
     
     // 绘制加载提示
     context.fillStyle = '#cccccc';
-    context.font = '16px Arial';
-    context.fillText('正在加载排行榜数据...', screenWidth / 2, screenHeight / 2);
+    context.font = '9px Arial';
+    context.fillText('正在加载...', screenWidth / 2, contentHeight / 2);
 }
 
 /**
@@ -483,43 +484,51 @@ function getAnswerOption(answer) {
 function drawSimilarityRankingList() {
     console.log('🎨 开始绘制相似度排行榜，数据量:', similarityRanking.length);
     
+    // 添加详细的数据调试信息
+    if (similarityRanking.length > 0) {
+        console.log('📊 排行榜数据详情:');
+        similarityRanking.forEach((friend, index) => {
+            console.log(`- ${index + 1}. ${friend.nickname}: ${friend.similarityPercentage}% (${friend.similarity})`);
+        });
+    }
+    
+    const contentHeight = screenHeight - 100; // 为底部tab栏预留100px空间
+    
     // 清空画布
-    context.clearRect(0, 0, screenWidth, screenHeight);
+    context.clearRect(0, 0, screenWidth, contentHeight);
     
     // 绘制背景
     context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillRect(0, 0, screenWidth, screenHeight);
+    context.fillRect(0, 0, screenWidth, contentHeight);
     
     // 绘制标题
     context.fillStyle = '#ffffff';
-    context.font = 'bold 28px Arial';
+    context.font = 'bold 14px Arial';
     context.textAlign = 'center';
-    context.fillText('好友相似度排行榜', screenWidth / 2, 60);
+    context.fillText('好友排行榜', screenWidth / 2, 20);
     
-    // 绘制说明文字
-    context.fillStyle = '#cccccc';
-    context.font = '14px Arial';
-    context.fillText('根据答题相似度排序', screenWidth / 2, 85);
+    // 绘制排行榜条目（去掉说明文字节省空间）
+    const startY = 30;
+    const itemHeight = 20;
+    const maxItems = Math.min(similarityRanking.length, Math.floor((contentHeight - startY) / itemHeight));
     
-    // 绘制排行榜条目
-    const startY = 120;
-    const itemHeight = 80;
-    const maxItems = Math.min(similarityRanking.length, 8);
+    console.log(`🎯 准备绘制 ${maxItems} 个条目`);
     
     for (let i = 0; i < maxItems; i++) {
         const friend = similarityRanking[i];
         const y = startY + i * itemHeight;
         
+        console.log(`绘制第 ${i + 1} 个条目: ${friend.nickname}, 相似度: ${friend.similarityPercentage}%`);
         drawSimilarityRankingItem(friend, i + 1, y, itemHeight);
     }
     
     // 如果没有好友数据
-    if (similarityRanking.length === 0) {
-        context.fillStyle = '#999999';
-        context.font = '16px Arial';
-        context.textAlign = 'center';
-        context.fillText('暂无好友答题数据', screenWidth / 2, screenHeight / 2);
-    }
+        if (similarityRanking.length === 0) {
+            context.fillStyle = '#999999';
+            context.font = '9px Arial';
+            context.textAlign = 'center';
+            context.fillText('暂无数据', screenWidth / 2, contentHeight / 2);
+        }
     
     console.log('✅ 排行榜绘制完成');
     
@@ -550,45 +559,45 @@ function drawSimilarityRankingList() {
  * @param {number} height - 条目高度
  */
 function drawSimilarityRankingItem(friend, rank, y, height) {
-    const padding = 20;
-    const avatarSize = 50;
+    const padding = 5;
+    const avatarSize = 14;
     
-    // 绘制背景
-    if (rank <= 3) {
-        context.fillStyle = 'rgba(255, 215, 0, 0.2)'; // 前三名金色背景
-    } else {
-        context.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    }
-    context.fillRect(padding, y, screenWidth - padding * 2, height);
+    // 简化背景绘制（去掉背景节省性能）
     
     // 绘制排名
     context.fillStyle = getRankColor(rank);
-    context.font = 'bold 24px Arial';
+    context.font = 'bold 9px Arial';
     context.textAlign = 'center';
-    context.fillText(rank.toString(), padding + 30, y + height / 2 + 8);
+    context.fillText(rank.toString(), padding + 8, y + height / 2 + 2);
     
     // 绘制头像占位符
     context.fillStyle = '#666666';
-    context.fillRect(padding + 70, y + (height - avatarSize) / 2, avatarSize, avatarSize);
+    const avatarX = padding + 20;
+    const avatarY = y + (height - avatarSize) / 2;
+    context.fillRect(avatarX, avatarY, avatarSize, avatarSize);
     
-    // 绘制昵称
+    // 绘制昵称（缩短宽度为相似度留出更多空间）
     context.fillStyle = '#ffffff';
-    context.font = '18px Arial';
+    context.font = '8px Arial';
     context.textAlign = 'left';
-    const maxNicknameWidth = screenWidth - padding * 2 - 200;
+    const maxNicknameWidth = screenWidth - padding * 2 - 100; // 增加右侧预留空间
     const displayName = truncateText(friend.nickname, maxNicknameWidth, context);
-    context.fillText(displayName, padding + 130, y + height / 2 - 5);
+    context.fillText(displayName, avatarX + avatarSize + 4, y + height / 2 + 1);
     
-    // 绘制相似度
-    context.fillStyle = getSimilarityColor(friend.similarity);
-    context.font = 'bold 20px Arial';
+    // 绘制相似度（增大字体并确保显示）
+    context.fillStyle = '#00ff00'; // 使用明亮的绿色确保可见
+    context.font = 'bold 14px Arial'; // 进一步增大字体到14px
     context.textAlign = 'right';
-    context.fillText(friend.similarityPercentage + '%', screenWidth - padding - 20, y + height / 2 - 5);
+    const similarityText = (friend.similarityPercentage || 0) + '%';
+    context.fillText(similarityText, screenWidth - padding - 10, y + height / 2 + 3);
     
-    // 绘制相似度说明
-    context.fillStyle = '#cccccc';
-    context.font = '12px Arial';
-    context.fillText('相似度', screenWidth - padding - 20, y + height / 2 + 15);
+    // 添加白色边框效果增强可见性
+    context.strokeStyle = '#ffffff';
+    context.lineWidth = 1;
+    context.strokeText(similarityText, screenWidth - padding - 10, y + height / 2 + 3);
+    
+    // 添加调试信息
+    console.log(`显示好友 ${friend.nickname} 相似度: ${friend.similarityPercentage}% 位置: (${screenWidth - padding - 10}, ${y + height / 2 + 3})`);
 }
 
 /**
@@ -641,19 +650,21 @@ function truncateText(text, maxWidth, ctx) {
  * @param {string} message - 错误消息
  */
 function drawError(message) {
-    context.clearRect(0, 0, screenWidth, screenHeight);
+    const contentHeight = screenHeight - 100; // 为底部tab栏预留100px空间
+    
+    context.clearRect(0, 0, screenWidth, contentHeight);
     
     context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillRect(0, 0, screenWidth, screenHeight);
+    context.fillRect(0, 0, screenWidth, contentHeight);
     
     context.fillStyle = '#ffffff';
-    context.font = 'bold 28px Arial';
+    context.font = 'bold 14px Arial';
     context.textAlign = 'center';
-    context.fillText('好友相似度排行榜', screenWidth / 2, 60);
+    context.fillText('好友排行榜', screenWidth / 2, 20);
     
     context.fillStyle = '#ff6b6b';
-    context.font = '16px Arial';
-    context.fillText(message, screenWidth / 2, screenHeight / 2);
+    context.font = 'bold 9px Arial';
+    context.fillText(message, screenWidth / 2, contentHeight / 2);
 }
 
 // 监听主域消息

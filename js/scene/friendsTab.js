@@ -163,16 +163,27 @@ export default class FriendsTab {
             return;
         }
 
-        // 清空主域画布
-        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        // 只清空内容区域，保留底部tab栏（高度100px）
+        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
         
         // 获取开放数据域的共享画布
         const sharedCanvas = this.openDataContext.canvas;
         
         if (sharedCanvas) {
-            // 将开放数据域的内容绘制到主域
-            this.ctx.drawImage(sharedCanvas, 0, 0, window.innerWidth, window.innerHeight);
-            console.log('开放数据域内容已绘制到主域');
+            console.log('📱 开放数据域画布信息:');
+            console.log('- 画布宽度:', sharedCanvas.width);
+            console.log('- 画布高度:', sharedCanvas.height);
+            console.log('- 目标区域:', window.innerWidth, 'x', window.innerHeight - 100);
+            
+            // 将开放数据域的内容绘制到主域，但不覆盖底部tab栏
+            this.ctx.drawImage(sharedCanvas, 0, 0, window.innerWidth, window.innerHeight - 100, 0, 0, window.innerWidth, window.innerHeight - 100);
+            console.log('✅ 开放数据域内容已绘制到主域');
+            
+            // 强制刷新画布
+            this.ctx.save();
+            this.ctx.restore();
+        } else {
+            console.error('❌ 无法获取开放数据域的共享画布');
         }
         
         // 启动持续刷新机制，确保开放数据域内容能及时显示
@@ -188,18 +199,35 @@ export default class FriendsTab {
             clearInterval(this.refreshTimer);
         }
         
+        let refreshCount = 0;
+        
         // 设置定时刷新，每100ms刷新一次
         this.refreshTimer = setInterval(() => {
             if (this.openDataContext && this.openDataContext.canvas) {
-                // 清空主域画布
-                this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                refreshCount++;
                 
-                // 重新绘制开放数据域内容
-                this.ctx.drawImage(this.openDataContext.canvas, 0, 0, window.innerWidth, window.innerHeight);
+                // 每10次刷新输出一次调试信息
+                if (refreshCount % 10 === 1) {
+                    console.log(`🔄 刷新开放数据域 #${refreshCount}`);
+                    console.log('- 画布存在:', !!this.openDataContext.canvas);
+                    console.log('- 画布尺寸:', this.openDataContext.canvas.width, 'x', this.openDataContext.canvas.height);
+                }
+                
+                // 只清空内容区域，保留底部tab栏（高度100px）
+                this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
+                
+                // 重新绘制开放数据域内容，但不覆盖底部tab栏
+                this.ctx.drawImage(this.openDataContext.canvas, 0, 0, window.innerWidth, window.innerHeight - 100, 0, 0, window.innerWidth, window.innerHeight - 100);
+                
+                // 强制刷新主画布
+                this.ctx.save();
+                this.ctx.restore();
+            } else {
+                console.warn('⚠️ 开放数据域或画布不可用');
             }
         }, 100);
         
-        console.log('开放数据域刷新循环已启动');
+        console.log('✅ 开放数据域刷新循环已启动');
     }
     
     /**
@@ -264,6 +292,9 @@ export default class FriendsTab {
             this.loadFriends();
             return;
         }
+        
+        // 不阻止事件传播，让TabScene处理tab切换
+        return false;
     }
 
     /**

@@ -43,6 +43,14 @@ export default class TabScene {
 
     switchTab(index) {
         console.log('切换到tab:', index);
+        
+        // 停止之前tab的刷新循环（如果有的话）
+        const previousTab = this.getTab(this.currentTab);
+        if (previousTab && typeof previousTab.stopRefreshLoop === 'function') {
+            console.log('停止之前tab的刷新循环');
+            previousTab.stopRefreshLoop();
+        }
+        
         this.currentTab = index;
         
         // 确保tab已经初始化
@@ -140,7 +148,9 @@ export default class TabScene {
                 console.log('传递事件给当前tab:', this.currentTab);
                 const currentTab = this.getTab(this.currentTab);
                 if (currentTab && currentTab.handleTouch) {
-                    currentTab.handleTouch(x, y);
+                    const handled = currentTab.handleTouch(x, y);
+                    // 如果当前tab没有处理事件（返回false），则不做任何操作
+                    // 这样可以确保事件能够正常传播
                 }
             }
         });

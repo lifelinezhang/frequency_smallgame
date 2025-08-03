@@ -101,8 +101,12 @@ export default class RecommendTab {
                 } else {
                     await this.viewReport(item.id);
                 }
+                return true; // 表示事件已处理
             }
         }
+        
+        // 没有处理事件，返回false让TabScene处理tab切换
+        return false;
     }
 
     async unlockReport(reportId) {

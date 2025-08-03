@@ -366,52 +366,56 @@ export default class ProfileTab {
         console.log('ProfileTab handleTouch:', x, y, 'isLoggedIn:', this.isLoggedIn);
         
         if (!this.isLoggedIn) {
-        // 检查是否点击了登录按钮区域
-        const buttonWidth = 200;
-        const buttonHeight = 50;
-        const buttonX = (window.innerWidth - buttonWidth) / 2;
-        const buttonY = 250;
-        
-        if (x >= buttonX && x <= buttonX + buttonWidth && 
-            y >= buttonY && y <= buttonY + buttonHeight) {
-            console.log('点击了登录按钮区域');
-            // 这里可以触发登录流程
-        }
-        return;
-    }
-    
-    // 检查是否点击了退出登录按钮
-    if (x >= window.innerWidth - 80 && x <= window.innerWidth - 20 && y >= 20 && y <= 50) {
-        wx.showModal({
-            title: '确认退出',
-            content: '确定要退出登录吗？',
-            success: (res) => {
-                if (res.confirm) {
-                    this.logout();
-                }
+            // 检查是否点击了登录按钮区域
+            const buttonWidth = 200;
+            const buttonHeight = 50;
+            const buttonX = (window.innerWidth - buttonWidth) / 2;
+            const buttonY = 250;
+            
+            if (x >= buttonX && x <= buttonX + buttonWidth && 
+                y >= buttonY && y <= buttonY + buttonHeight) {
+                console.log('点击了登录按钮区域');
+                // 这里可以触发登录流程
+                return true; // 表示事件已处理
             }
-        });
-        return;
+            return false; // 没有处理事件，让TabScene处理tab切换
+        }
+        
+        // 检查是否点击了退出登录按钮
+        if (x >= window.innerWidth - 80 && x <= window.innerWidth - 20 && y >= 20 && y <= 50) {
+            wx.showModal({
+                title: '确认退出',
+                content: '确定要退出登录吗？',
+                success: (res) => {
+                    if (res.confirm) {
+                        this.logout();
+                    }
+                }
+            });
+            return true; // 表示事件已处理
+        }
+        
+        // 检查是否点击了观看广告按钮
+        if (y >= 170 && y <= 210 && x >= window.innerWidth - 120) {
+            this.showAdVideo();
+            return true; // 表示事件已处理
+        }
+        
+        // 检查是否点击了开始答题按钮
+        if (y >= 240 && y <= 280 && x >= 20 && x <= window.innerWidth - 20) {
+            this.startQuiz();
+            return true; // 表示事件已处理
+        }
+        
+        // 检查是否点击了我的报告按钮
+        if (y >= 300 && y <= 340 && x >= 20 && x <= window.innerWidth - 20) {
+            this.showMyReports();
+            return true; // 表示事件已处理
+        }
+        
+        // 没有处理事件，返回false让TabScene处理tab切换
+        return false;
     }
-    
-    // 检查是否点击了观看广告按钮
-    if (y >= 170 && y <= 210 && x >= window.innerWidth - 120) {
-        this.showAdVideo();
-        return;
-    }
-    
-    // 检查是否点击了开始答题按钮
-    if (y >= 240 && y <= 280 && x >= 20 && x <= window.innerWidth - 20) {
-        this.startQuiz();
-        return;
-    }
-    
-    // 检查是否点击了我的报告按钮
-    if (y >= 300 && y <= 340 && x >= 20 && x <= window.innerWidth - 20) {
-        this.showMyReports();
-        return;
-    }
-}
 
     async showAdVideo() {
         try {

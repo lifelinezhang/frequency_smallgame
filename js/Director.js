@@ -239,9 +239,9 @@ export default class Director {
      */
     updateFriendsTabWithAnswers(userAnswers) {
         try {
-            // 获取TabScene实例
-            if (this.tabScene && this.tabScene.tabs && this.tabScene.tabs[1]) {
-                const friendsTab = this.tabScene.tabs[1];
+            // 获取TabScene实例（隐藏推荐tab后，好友tab索引变为0）
+            if (this.tabScene && this.tabScene.tabs && this.tabScene.tabs[0]) {
+                const friendsTab = this.tabScene.tabs[0];
                 if (friendsTab && typeof friendsTab.setUserAnswers === 'function') {
                     console.log('更新好友标签页答案数据');
                     friendsTab.setUserAnswers(userAnswers);
@@ -275,14 +275,14 @@ export default class Director {
         
         // 恢复TabScene
         if (this.tabScene) {
-            // 设置当前tab为"我的"页面
-            this.tabScene.currentTab = 2;
+            // 设置当前tab为"我的"页面（隐藏推荐tab后，索引变为1）
+            this.tabScene.currentTab = 1;
             this.tabScene.resume();
         } else {
             this.showTabScene(ctx);
-            // 设置默认显示"我的"页面
+            // 设置默认显示"我的"页面（隐藏推荐tab后，索引变为1）
             if (this.tabScene) {
-                this.tabScene.currentTab = 2;
+                this.tabScene.currentTab = 1;
             }
         }
         

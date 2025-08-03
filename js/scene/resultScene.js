@@ -246,14 +246,14 @@ export default class ResultScene {
         
         // 恢复或创建TabScene
         if (director.tabScene) {
-            // 切换到好友tab（索引1）
-            director.tabScene.switchTab(1);
+            // 切换到好友tab（隐藏推荐tab后，索引变为0）
+            director.tabScene.switchTab(0);
             director.tabScene.resume();
         } else {
             director.showTabScene(ctx);
-            // 设置默认显示好友tab
+            // 设置默认显示好友tab（隐藏推荐tab后，索引变为0）
             if (director.tabScene) {
-                director.tabScene.switchTab(1);
+                director.tabScene.switchTab(0);
             }
         }
         

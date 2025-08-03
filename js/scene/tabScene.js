@@ -2,7 +2,6 @@
 import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
-import RecommendTab from './recommendTab';
 import FriendsTab from './friendsTab';
 import ProfileTab from './profileTab';
 
@@ -13,27 +12,23 @@ export default class TabScene {
     constructor(ctx) {
         this.ctx = ctx;
         this.canvas = DataStore.getInstance().canvas;
-        this.currentTab = 2; // 默认显示"我的"页面（索引2）
+        this.currentTab = 1; // 默认显示"我的"页面（索引1，隐藏推荐tab后）
         this.tabs = [
-            null, // 延迟初始化
-            null, // 延迟初始化
-            null  // 延迟初始化
+            null, // 好友tab
+            null  // 我的tab
         ];
         this.init();
     }
 
-    // 获取或创建tab实例
+    // 获取或创建tab实例（隐藏推荐tab后的索引映射）
     getTab(index) {
         if (!this.tabs[index]) {
             switch(index) {
                 case 0:
-                    this.tabs[index] = new RecommendTab(this.ctx);
-                    break;
-                case 1:
                     console.log('创建FriendsTab实例');
                     this.tabs[index] = new FriendsTab(this.ctx);
                     break;
-                case 2:
+                case 1:
                     this.tabs[index] = new ProfileTab(this.ctx);
                     break;
             }
@@ -59,8 +54,8 @@ export default class TabScene {
         // 先显示当前tab（可能是加载界面）
         this.showCurrentTab();
         
-        // 如果是好友tab，异步加载数据
-        if (index === 1 && currentTab && typeof currentTab.loadFriends === 'function') {
+        // 如果是好友tab，异步加载数据（隐藏推荐tab后，好友tab索引变为0）
+        if (index === 0 && currentTab && typeof currentTab.loadFriends === 'function') {
             console.log('触发好友tab数据加载');
             // 异步加载，避免阻塞界面显示
             setTimeout(() => {
@@ -86,16 +81,16 @@ export default class TabScene {
     }
 
     drawTabBar() {
-        // 绘制底部tab栏
+        // 绘制底部tab栏（隐藏推荐tab，只显示好友和我的）
         const tabHeight = 100;
-        const tabWidth = screenWidth / 3;
+        const tabWidth = screenWidth / 2; // 改为2个tab，每个占一半宽度
         
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillRect(0, screenHeight - tabHeight, screenWidth, tabHeight);
         
-        // 绘制tab按钮
-        const tabNames = ['推荐', '好友', '我的'];
-        for (let i = 0; i < 3; i++) {
+        // 绘制tab按钮（隐藏推荐tab）
+        const tabNames = ['好友', '我的'];
+        for (let i = 0; i < 2; i++) {
             const x = i * tabWidth;
             const y = screenHeight - tabHeight;
             
@@ -140,11 +135,11 @@ export default class TabScene {
             
             console.log('TabScene 触摸事件:', x, y);
             
-            // 检查是否点击了tab栏
+            // 检查是否点击了tab栏（隐藏推荐tab后，只有2个tab）
             if (y > screenHeight - 100) {
-                const tabIndex = Math.floor(x / (screenWidth / 3));
+                const tabIndex = Math.floor(x / (screenWidth / 2));
                 console.log('点击了tab:', tabIndex);
-                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 3) {
+                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 2) {
                     this.switchTab(tabIndex);
                 }
             } else {

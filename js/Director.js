@@ -38,8 +38,18 @@ export default class Director {
     //     DataStore.getInstance().userInfo = userInfo;
     // }
     
+    /**
+     * 显示Tab场景
+     * 游戏的主界面
+     */
     showTabScene(ctx) {
+        console.log('创建TabScene');
         this.tabScene = new TabScene(ctx);
+        
+        // 确保TabScene正确初始化并显示
+        if (this.tabScene) {
+            console.log('TabScene创建成功，当前tab:', this.tabScene.currentTab);
+        }
     }
     // 首页场景
     showHomeScene (ctx) {

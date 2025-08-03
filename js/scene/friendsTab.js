@@ -332,34 +332,51 @@ export default class FriendsTab {
     /**
      * 绘制备用界面
      */
+    /**
+     * 绘制备用界面
+     * 避免覆盖底部tab栏
+     */
     drawFallbackUI() {
-        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const tabHeight = 100;
+        const contentHeight = screenHeight - tabHeight;
+        
+        // 只清除内容区域，不清除tab栏
+        this.ctx.clearRect(0, 0, screenWidth, contentHeight);
         this.ctx.fillStyle = '#f0f0f0';
-        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        this.ctx.fillRect(0, 0, screenWidth, contentHeight);
         
         this.ctx.fillStyle = '#333333';
         this.ctx.font = 'bold 24px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('好友相似度排行榜', window.innerWidth/2, 100);
+        this.ctx.fillText('好友相似度排行榜', screenWidth/2, 100);
         
         this.ctx.fillStyle = '#999999';
         this.ctx.font = '16px Arial';
-        this.ctx.fillText('当前环境不支持好友排行榜功能', window.innerWidth/2, window.innerHeight/2);
+        this.ctx.fillText('当前环境不支持好友排行榜功能', screenWidth/2, contentHeight/2);
     }
 
     /**
      * 绘制错误状态
+     * 避免覆盖底部tab栏
      * @param {string} message - 错误消息
      */
     drawError(message) {
-        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const tabHeight = 100;
+        const contentHeight = screenHeight - tabHeight;
+        
+        // 只清除内容区域，不清除tab栏
+        this.ctx.clearRect(0, 0, screenWidth, contentHeight);
         this.ctx.fillStyle = '#f0f0f0';
-        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        this.ctx.fillRect(0, 0, screenWidth, contentHeight);
         
         this.ctx.fillStyle = '#333333';
         this.ctx.font = 'bold 24px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('好友相似度排行榜', window.innerWidth/2, 100);
+        this.ctx.fillText('好友相似度排行榜', screenWidth/2, 100);
         
         this.ctx.fillStyle = '#ff6b6b';
         this.ctx.font = '16px Arial';

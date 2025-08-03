@@ -64,29 +64,72 @@ export default class TabScene {
         }
     }
 
+    /**
+     * 显示当前选中的tab内容
+     * 只清除内容区域，保留tab栏
+     */
     showCurrentTab() {
+        // 只清除内容区域，不清除底部tab栏区域
         this.ctx.clearRect(0, 0, screenWidth, screenHeight - 100);
+        
         const currentTab = this.getTab(this.currentTab);
         if (currentTab && currentTab.render) {
             currentTab.render();
         }
+        
+        // 确保tab栏始终显示
         this.drawTabBar();
     }
 
+    /**
+     * 初始化TabScene
+     * 确保tab栏在初始化时就能正确显示
+     */
     init() {
-        // 先绘制基本界面，再异步加载数据
-        this.showCurrentTab();
+        console.log('开始初始化TabScene...');
+        
+        // 清除画布
+        this.ctx.clearRect(0, 0, screenWidth, screenHeight);
+        
+        // 设置画布背景色
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, screenWidth, screenHeight);
+        
+        // 立即绘制tab栏，确保底部导航始终可见
         this.drawTabBar();
+        
+        // 使用setTimeout确保tab栏绘制完成后再绘制内容
+        setTimeout(() => {
+            this.showCurrentTab();
+            console.log('TabScene内容绘制完成');
+        }, 10);
+        
+        // 绑定事件
         this.bindTabEvents();
+        
+        console.log('TabScene初始化完成，当前tab:', this.currentTab);
     }
 
+    /**
+     * 绘制底部tab栏
+     * 确保tab栏始终可见且样式清晰
+     */
     drawTabBar() {
         // 绘制底部tab栏（隐藏推荐tab，只显示好友和我的）
         const tabHeight = 100;
         const tabWidth = screenWidth / 2; // 改为2个tab，每个占一半宽度
         
-        this.ctx.fillStyle = '#ffffff';
+        // 绘制tab栏背景
+        this.ctx.fillStyle = '#f8f8f8';
         this.ctx.fillRect(0, screenHeight - tabHeight, screenWidth, tabHeight);
+        
+        // 绘制顶部分隔线
+        this.ctx.strokeStyle = '#e0e0e0';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, screenHeight - tabHeight);
+        this.ctx.lineTo(screenWidth, screenHeight - tabHeight);
+        this.ctx.stroke();
         
         // 绘制tab按钮（隐藏推荐tab）
         const tabNames = ['好友', '我的'];
@@ -94,31 +137,66 @@ export default class TabScene {
             const x = i * tabWidth;
             const y = screenHeight - tabHeight;
             
+            // 绘制tab背景（选中状态）
+            if (i === this.currentTab) {
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(x + 5, y + 10, tabWidth - 10, tabHeight - 20);
+                
+                // 绘制选中状态的边框
+                this.ctx.strokeStyle = '#007AFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(x + 5, y + 10, tabWidth - 10, tabHeight - 20);
+            }
+            
+            // 绘制文本
             if (i === this.currentTab) {
                 this.ctx.fillStyle = '#007AFF';
             } else {
-                this.ctx.fillStyle = '#999999';
+                this.ctx.fillStyle = '#666666';
             }
             
-            this.ctx.font = '16px Arial';
+            this.ctx.font = 'bold 18px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(tabNames[i], x + tabWidth/2, y + tabHeight/2);
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(tabNames[i], x + tabWidth/2, y + tabHeight/2 + 5);
+            
+            // 绘制tab之间的分隔线
+            if (i < 1) {
+                this.ctx.strokeStyle = '#e0e0e0';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo((i + 1) * tabWidth, y + 20);
+                this.ctx.lineTo((i + 1) * tabWidth, y + tabHeight - 20);
+                this.ctx.stroke();
+            }
         }
+        
+        console.log('Tab栏绘制完成，当前选中tab:', this.currentTab);
     }
 
-    // 添加恢复显示的方法
+    /**
+     * 恢复TabScene显示
+     * 从其他场景返回时调用
+     */
     resume() {
         console.log('TabScene resume 被调用');
         
         // 清除可能存在的微信事件监听
         wx.offTouchStart();
         
-        // 重新绘制当前tab
-        this.showCurrentTab();
+        // 清除整个画布
+        this.ctx.clearRect(0, 0, screenWidth, screenHeight);
+        
+        // 先绘制tab栏，确保底部导航可见
         this.drawTabBar();
+        
+        // 再绘制当前tab内容
+        this.showCurrentTab();
         
         // 重新绑定事件
         this.bindTabEvents();
+        
+        console.log('TabScene恢复完成，当前tab:', this.currentTab);
     }
 
     bindTabEvents() {

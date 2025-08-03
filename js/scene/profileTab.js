@@ -59,8 +59,13 @@ export default class ProfileTab {
         }
     }
 
+    /**
+     * 渲染ProfileTab内容
+     * 注意：不要覆盖底部tab栏区域
+     */
     render() {
-        const background = new Background(this.ctx);
+        // 先绘制背景，但要避免覆盖底部tab栏
+        this.drawBackground();
         
         if (!this.isLoggedIn) {
             this.drawLoginInterface();
@@ -76,6 +81,27 @@ export default class ProfileTab {
             
             // 绘制我的报告
             this.drawMyReports();
+        }
+    }
+    
+    /**
+     * 绘制背景，但不覆盖底部tab栏区域
+     */
+    drawBackground() {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const tabHeight = 100;
+        
+        // 只绘制内容区域的背景，不覆盖tab栏
+        const bgImg = DataStore.getInstance().res.get('background');
+        if (bgImg) {
+            this.ctx.drawImage(bgImg, 0, 0, screenWidth, screenHeight - tabHeight);
+        }
+        
+        // 绘制logo
+        const logoImg = DataStore.getInstance().res.get('logo');
+        if (logoImg) {
+            this.ctx.drawImage(logoImg, 10, -10, logoImg.width / 2, logoImg.height / 2);
         }
     }
 

@@ -133,9 +133,17 @@ export default class FriendsTab {
 
         try {
             // 获取开放数据域
-            if (typeof wx.getOpenDataContext === 'function') {
-                this.openDataContext = wx.getOpenDataContext();
-                console.log('获取开放数据域成功');
+            this.openDataContext = wx.getOpenDataContext();
+            if (this.openDataContext) {
+                console.log('✅ 成功获取开放数据域');
+                
+                // 监听开放数据域的消息
+                wx.onMessage && wx.onMessage((data) => {
+                    if (data.type === 'refresh') {
+                        console.log('📨 收到开放数据域刷新请求');
+                        this.showOpenDataContext();
+                    }
+                });
                 
                 // 向开放数据域发送显示排行榜的消息（不再传递userAnswers，开放域会自己从云存储获取）
                 this.openDataContext.postMessage({
@@ -175,13 +183,23 @@ export default class FriendsTab {
             console.log('- 画布高度:', sharedCanvas.height);
             console.log('- 目标区域:', window.innerWidth, 'x', window.innerHeight - 100);
             
-            // 将开放数据域的内容绘制到主域，但不覆盖底部tab栏
-            this.ctx.drawImage(sharedCanvas, 0, 0, window.innerWidth, window.innerHeight - 100, 0, 0, window.innerWidth, window.innerHeight - 100);
-            console.log('✅ 开放数据域内容已绘制到主域');
+            // 计算正确的缩放比例
+            const targetWidth = window.innerWidth;
+            const targetHeight = window.innerHeight - 100;
+            
+            // 直接按照逻辑尺寸绘制，不进行额外缩放
+            this.ctx.drawImage(sharedCanvas, 0, 0, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
+            console.log('✅ 开放数据域内容已绘制到主域，尺寸:', targetWidth, 'x', targetHeight);
             
             // 强制刷新画布
             this.ctx.save();
             this.ctx.restore();
+            
+            // 添加调试边框确认绘制区域
+            this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(0, 0, targetWidth, targetHeight);
+            
         } else {
             console.error('❌ 无法获取开放数据域的共享画布');
         }

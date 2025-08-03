@@ -7,9 +7,16 @@ const screenHeight = wx.getSystemInfoSync().screenHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
 
 // 设置画布尺寸，为底部tab栏预留空间（100px）
+// 设置画布尺寸和缩放比例
 sharedCanvas.width = screenWidth * ratio;
 sharedCanvas.height = (screenHeight - 100) * ratio;
 context.scale(ratio, ratio);
+
+console.log('🖼️ 开放数据域画布初始化:');
+console.log('- 屏幕尺寸:', screenWidth, 'x', screenHeight);
+console.log('- 像素比例:', ratio);
+console.log('- 画布尺寸:', sharedCanvas.width, 'x', sharedCanvas.height);
+console.log('- 逻辑尺寸:', screenWidth, 'x', (screenHeight - 100));
 
 // 排行榜数据
 let friendsData = [];
@@ -236,29 +243,79 @@ function getFriendsSimilarityRanking() {
         console.log('- currentUserAnswers是否为数组:', Array.isArray(currentUserAnswers));
         console.log('- currentUserAnswers长度:', currentUserAnswers ? currentUserAnswers.length : 'undefined');
         
-        // 然后获取好友数据
-        wx.getFriendCloudStorage({
-            keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'],
-            success: res => {
-                console.log('🔍 开放域获取好友数据成功:');
-                console.log('- 好友总数:', res.data.length);
-                console.log('- 原始数据:', res.data);
+        // 获取好友信息（包含头像）
+        wx.getUserInfo({
+            openIdList: [],  // 空数组表示获取所有好友
+            lang: 'zh_CN',
+            success: userInfoRes => {
+                console.log('🔍 获取好友用户信息成功:', userInfoRes.data.length, '个好友');
                 
-                // 详细检查每个好友的数据
-                res.data.forEach((friend, index) => {
-                    console.log(`好友${index + 1} (${friend.nickname}):`);
-                    friend.KVDataList.forEach(kv => {
-                        console.log(`  - ${kv.key}: ${kv.value ? kv.value.substring(0, 100) + (kv.value.length > 100 ? '...' : '') : 'null'}`);
-                    });
+                // 然后获取好友云存储数据
+                wx.getFriendCloudStorage({
+                    keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'],
+                    success: res => {
+                        console.log('🔍 开放域获取好友数据成功:');
+                        console.log('- 好友总数:', res.data.length);
+                        console.log('- 原始数据:', res.data);
+                        
+                        // 合并好友信息和云存储数据
+                         const mergedFriendsData = res.data.map(friend => {
+                             const userInfo = userInfoRes.data.find(user => user.openid === friend.openid);
+                             
+                             // 优先使用云存储数据中的头像URL，然后是用户信息中的头像URL
+                             let avatarUrl = friend.avatarUrl || '';
+                             if (!avatarUrl && userInfo && userInfo.avatarUrl) {
+                                 avatarUrl = userInfo.avatarUrl;
+                             }
+                             
+                             console.log(`🔍 好友 ${friend.nickname} 头像处理:`);
+                             console.log(`  - 云存储头像: ${friend.avatarUrl ? '有' : '无'}`);
+                             console.log(`  - 用户信息头像: ${userInfo && userInfo.avatarUrl ? '有' : '无'}`);
+                             console.log(`  - 最终头像URL: ${avatarUrl ? '有' : '无'}`);
+                             
+                             return {
+                                 ...friend,
+                                 avatarUrl: avatarUrl,
+                                 nickname: userInfo ? userInfo.nickName : friend.nickname
+                             };
+                         });
+                        
+                        console.log('✅ 好友数据合并完成，包含头像信息');
+                        
+                        // 详细检查每个好友的数据
+                        mergedFriendsData.forEach((friend, index) => {
+                            console.log(`好友${index + 1} (${friend.nickname}):`);
+                            console.log(`  - 头像URL: ${friend.avatarUrl ? '有' : '无'}`);
+                            friend.KVDataList.forEach(kv => {
+                                console.log(`  - ${kv.key}: ${kv.value ? kv.value.substring(0, 100) + (kv.value.length > 100 ? '...' : '') : 'null'}`);
+                            });
+                        });
+                        
+                        friendsData = processFriendsAnswers(mergedFriendsData);
+                        calculateSimilarity();
+                        // drawSimilarityRankingList() 已在 calculateSimilarity() 内部调用
+                    },
+                    fail: res => {
+                        console.error('获取好友数据失败:', res);
+                        drawError('获取排行榜数据失败');
+                    }
                 });
-                
-                friendsData = processFriendsAnswers(res.data);
-                calculateSimilarity();
-                // drawSimilarityRankingList() 已在 calculateSimilarity() 内部调用
             },
             fail: res => {
-                console.error('获取好友数据失败:', res);
-                drawError('获取排行榜数据失败');
+                console.error('获取好友用户信息失败:', res);
+                // 如果获取用户信息失败，仍然尝试获取云存储数据
+                wx.getFriendCloudStorage({
+                    keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'],
+                    success: res => {
+                        console.log('🔍 开放域获取好友数据成功（无头像）:');
+                        friendsData = processFriendsAnswers(res.data);
+                        calculateSimilarity();
+                    },
+                    fail: res => {
+                        console.error('获取好友数据失败:', res);
+                        drawError('获取排行榜数据失败');
+                    }
+                });
             }
         });
     }).catch(error => {
@@ -539,12 +596,28 @@ function drawSimilarityRankingList() {
             wx.triggerGC();
         }
         
+        // 强制画布状态更新
+        context.save();
+        context.restore();
+        
+        // 添加一个简单的测试绘制，确保画布激活
+        context.fillStyle = 'rgba(255, 0, 0, 0.01)';
+        context.fillRect(0, 0, 1, 1);
+        
         // 触发重绘事件，确保画布内容更新
         setTimeout(() => {
             console.log('🔄 延迟刷新画布');
             // 再次确保画布内容可见
             context.save();
             context.restore();
+            
+            // 通知主域刷新
+            if (typeof wx !== 'undefined' && wx.postMessage) {
+                wx.postMessage({
+                    type: 'refresh',
+                    timestamp: Date.now()
+                });
+            }
         }, 50);
     } catch (error) {
         console.warn('⚠️ 画布刷新操作失败:', error);
@@ -570,11 +643,107 @@ function drawSimilarityRankingItem(friend, rank, y, height) {
     context.textAlign = 'center';
     context.fillText(rank.toString(), padding + 8, y + height / 2 + 2);
     
-    // 绘制头像占位符
-    context.fillStyle = '#666666';
+    // 绘制头像
     const avatarX = padding + 20;
     const avatarY = y + (height - avatarSize) / 2;
-    context.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+    
+    // 绘制头像（优先使用真实头像，失败时使用占位符）
+     drawAvatar(avatarX, avatarY, avatarSize, friend);
+     
+     /**
+      * 绘制头像（真实头像或占位符）
+      * @param {number} x - X坐标
+      * @param {number} y - Y坐标 
+      * @param {number} size - 尺寸
+      * @param {Object} friend - 好友数据
+      */
+     function drawAvatar(x, y, size, friend) {
+         if (friend.avatarUrl && friend.avatarUrl !== '') {
+             // 尝试绘制真实头像
+             const avatarImg = wx.createImage();
+             
+             avatarImg.onload = function() {
+                 // 保存画布状态
+                 context.save();
+                 
+                 // 创建圆形裁剪区域
+                 context.beginPath();
+                 context.arc(x + size/2, y + size/2, size/2, 0, 2 * Math.PI);
+                 context.clip();
+                 
+                 // 绘制头像图片
+                 context.drawImage(avatarImg, x, y, size, size);
+                 
+                 // 恢复画布状态
+                 context.restore();
+                 
+                 // 添加圆形边框
+                 context.beginPath();
+                 context.arc(x + size/2, y + size/2, size/2, 0, 2 * Math.PI);
+                 context.strokeStyle = '#ffffff';
+                 context.lineWidth = 1;
+                 context.stroke();
+                 
+                 console.log(`✅ 成功绘制好友 ${friend.nickname} 的真实头像`);
+             };
+             
+             avatarImg.onerror = function() {
+                 console.warn(`⚠️ 好友 ${friend.nickname} 头像加载失败，使用占位符`);
+                 drawAvatarPlaceholder(x, y, size, friend.nickname);
+             };
+             
+             // 先绘制占位符，头像加载完成后会覆盖
+             drawAvatarPlaceholder(x, y, size, friend.nickname);
+             
+             // 开始加载头像
+             avatarImg.src = friend.avatarUrl;
+         } else {
+             console.log(`📷 好友 ${friend.nickname} 没有头像URL，使用占位符`);
+             drawAvatarPlaceholder(x, y, size, friend.nickname);
+         }
+     }
+     
+     /**
+      * 绘制美化的头像占位符
+      * @param {number} x - X坐标
+      * @param {number} y - Y坐标 
+      * @param {number} size - 尺寸
+      * @param {string} nickname - 好友昵称
+      */
+     function drawAvatarPlaceholder(x, y, size, nickname) {
+         // 保存画布状态
+         context.save();
+         
+         // 创建圆形头像
+         context.beginPath();
+         context.arc(x + size/2, y + size/2, size/2, 0, 2 * Math.PI);
+         
+         // 根据昵称生成颜色
+         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+         const colorIndex = nickname ? nickname.charCodeAt(0) % colors.length : 0;
+         context.fillStyle = colors[colorIndex];
+         context.fill();
+         
+         // 添加白色边框
+         context.strokeStyle = '#ffffff';
+         context.lineWidth = 1;
+         context.stroke();
+         
+         // 绘制昵称首字符
+         if (nickname && nickname.length > 0) {
+             context.fillStyle = '#ffffff';
+             context.font = `bold ${Math.floor(size * 0.5)}px Arial`;
+             context.textAlign = 'center';
+             context.textBaseline = 'middle';
+             const firstChar = nickname.charAt(0).toUpperCase();
+             context.fillText(firstChar, x + size/2, y + size/2);
+         }
+         
+         // 恢复画布状态
+         context.restore();
+         
+         console.log(`🎨 绘制好友 ${nickname} 的彩色头像占位符`);
+     }
     
     // 绘制昵称（缩短宽度为相似度留出更多空间）
     context.fillStyle = '#ffffff';

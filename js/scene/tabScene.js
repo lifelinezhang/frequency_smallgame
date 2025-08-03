@@ -17,6 +17,10 @@ export default class TabScene {
             null, // 好友tab
             null  // 我的tab
         ];
+        
+        // 将TabScene实例保存到DataStore中，供其他组件访问
+        DataStore.getInstance().currentTabScene = this;
+        
         this.init();
     }
 
@@ -54,12 +58,16 @@ export default class TabScene {
         // 先显示当前tab（可能是加载界面）
         this.showCurrentTab();
         
-        // 如果是好友tab，异步加载数据（隐藏推荐tab后，好友tab索引变为0）
-        if (index === 0 && currentTab && typeof currentTab.loadFriends === 'function') {
-            console.log('触发好友tab数据加载');
-            // 异步加载，避免阻塞界面显示
+        // 如果是好友tab，每次进入都强制刷新数据（隐藏推荐tab后，好友tab索引变为0）
+        if (index === 0 && currentTab) {
+            console.log('进入好友tab，强制刷新数据');
+            // 异步刷新，避免阻塞界面显示
             setTimeout(() => {
-                currentTab.loadFriends();
+                if (typeof currentTab.forceRefresh === 'function') {
+                    currentTab.forceRefresh();
+                } else if (typeof currentTab.loadFriends === 'function') {
+                    currentTab.loadFriends();
+                }
             }, 50);
         }
     }
@@ -183,6 +191,8 @@ export default class TabScene {
         
         // 清除可能存在的微信事件监听
         wx.offTouchStart();
+        wx.offTouchMove();
+        wx.offTouchEnd();
         
         // 清除整个画布
         this.ctx.clearRect(0, 0, screenWidth, screenHeight);
@@ -204,14 +214,16 @@ export default class TabScene {
         
         // 清除之前的微信事件监听
         wx.offTouchStart();
+        wx.offTouchMove();
+        wx.offTouchEnd();
         
-        // 使用微信的事件系统而不是canvas的addEventListener
+        // 使用微信的事件系统处理触摸开始事件
         wx.onTouchStart((e) => {
             const touch = e.touches[0];
             const x = touch.clientX;
             const y = touch.clientY;
             
-            console.log('TabScene 触摸事件:', x, y);
+            console.log('TabScene 触摸开始事件:', x, y);
             
             // 检查是否点击了tab栏（隐藏推荐tab后，只有2个tab）
             if (y > screenHeight - 100) {
@@ -221,13 +233,44 @@ export default class TabScene {
                     this.switchTab(tabIndex);
                 }
             } else {
-                // 传递事件给当前tab
-                console.log('传递事件给当前tab:', this.currentTab);
+                // 传递触摸开始事件给当前tab
                 const currentTab = this.getTab(this.currentTab);
+                if (currentTab && currentTab.handleTouchStart) {
+                    currentTab.handleTouchStart(x, y);
+                }
+                // 同时保持原有的handleTouch兼容性
                 if (currentTab && currentTab.handleTouch) {
-                    const handled = currentTab.handleTouch(x, y);
-                    // 如果当前tab没有处理事件（返回false），则不做任何操作
-                    // 这样可以确保事件能够正常传播
+                    currentTab.handleTouch(x, y);
+                }
+            }
+        });
+        
+        // 处理触摸移动事件（用于下拉刷新）
+        wx.onTouchMove((e) => {
+            const touch = e.touches[0];
+            const x = touch.clientX;
+            const y = touch.clientY;
+            
+            // 只在内容区域处理触摸移动
+            if (y <= screenHeight - 100) {
+                const currentTab = this.getTab(this.currentTab);
+                if (currentTab && currentTab.handleTouchMove) {
+                    currentTab.handleTouchMove(x, y);
+                }
+            }
+        });
+        
+        // 处理触摸结束事件（用于下拉刷新）
+        wx.onTouchEnd((e) => {
+            const touch = e.changedTouches[0];
+            const x = touch.clientX;
+            const y = touch.clientY;
+            
+            // 只在内容区域处理触摸结束
+            if (y <= screenHeight - 100) {
+                const currentTab = this.getTab(this.currentTab);
+                if (currentTab && currentTab.handleTouchEnd) {
+                    currentTab.handleTouchEnd(x, y);
                 }
             }
         });

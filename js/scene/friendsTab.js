@@ -18,6 +18,17 @@ export default class FriendsTab {
         this.userAnswers = []; // 存储用户答案
         this.refreshTimer = null; // 刷新定时器
         this.loadingTimer = null; // 加载动画定时器
+        
+        // 下拉刷新相关属性
+        this.pullRefresh = {
+            startY: 0,
+            currentY: 0,
+            isPulling: false,
+            isRefreshing: false,
+            threshold: 80, // 下拉阈值
+            maxPullDistance: 120 // 最大下拉距离
+        };
+        
         console.log('FriendsTab 构造函数被调用');
     }
 
@@ -199,14 +210,9 @@ export default class FriendsTab {
                 const targetWidth = window.innerWidth;
                 const targetHeight = window.innerHeight - 100;
                 
-                // 尝试多种绘制方式
-                // 方式1：直接绘制整个画布
-                this.ctx.drawImage(sharedCanvas, 0, 0);
-                console.log('✅ 方式1：直接绘制整个画布');
-                
-                // 方式2：按比例缩放绘制
-                // this.ctx.drawImage(sharedCanvas, 0, 0, sharedCanvas.width, sharedCanvas.height, 0, 0, targetWidth, targetHeight);
-                // console.log('✅ 方式2：按比例缩放绘制');
+                // 只在内容区域绘制，不覆盖tab栏
+                this.ctx.drawImage(sharedCanvas, 0, 0, sharedCanvas.width, sharedCanvas.height, 0, 0, targetWidth, targetHeight);
+                console.log('✅ 按比例缩放绘制到内容区域');
                 
             } catch (error) {
                 console.error('❌ 绘制开放数据域失败:', error);
@@ -264,6 +270,12 @@ export default class FriendsTab {
                 // 强制刷新主画布
                 this.ctx.save();
                 this.ctx.restore();
+                
+                // 确保tab栏始终显示 - 通知TabScene重新绘制tab栏
+                const dataStore = DataStore.getInstance();
+                if (dataStore.currentTabScene && typeof dataStore.currentTabScene.drawTabBar === 'function') {
+                    dataStore.currentTabScene.drawTabBar();
+                }
             } else {
                 console.warn('⚠️ 开放数据域或画布不可用');
             }
@@ -384,7 +396,62 @@ export default class FriendsTab {
     }
 
     /**
-     * 处理触摸事件
+     * 处理触摸开始事件
+     * @param {number} x - 触摸点 x 坐标
+     * @param {number} y - 触摸点 y 坐标
+     */
+    handleTouchStart(x, y) {
+        // 只在页面顶部区域启用下拉刷新
+        if (y < 100 && !this.pullRefresh.isRefreshing) {
+            this.pullRefresh.startY = y;
+            this.pullRefresh.currentY = y;
+            this.pullRefresh.isPulling = true;
+        }
+    }
+
+    /**
+     * 处理触摸移动事件
+     * @param {number} x - 触摸点 x 坐标
+     * @param {number} y - 触摸点 y 坐标
+     */
+    handleTouchMove(x, y) {
+        if (this.pullRefresh.isPulling && !this.pullRefresh.isRefreshing) {
+            this.pullRefresh.currentY = y;
+            const pullDistance = Math.max(0, y - this.pullRefresh.startY);
+            
+            // 限制最大下拉距离
+            if (pullDistance <= this.pullRefresh.maxPullDistance) {
+                this.drawPullRefreshIndicator(pullDistance);
+            }
+        }
+    }
+
+    /**
+     * 处理触摸结束事件
+     * @param {number} x - 触摸点 x 坐标
+     * @param {number} y - 触摸点 y 坐标
+     */
+    async handleTouchEnd(x, y) {
+        if (this.pullRefresh.isPulling) {
+            const pullDistance = this.pullRefresh.currentY - this.pullRefresh.startY;
+            
+            if (pullDistance >= this.pullRefresh.threshold) {
+                // 触发刷新
+                await this.triggerRefresh();
+            }
+            
+            // 重置下拉状态
+            this.pullRefresh.isPulling = false;
+            this.pullRefresh.startY = 0;
+            this.pullRefresh.currentY = 0;
+            
+            // 重新渲染，清除下拉指示器
+            this.render();
+        }
+    }
+
+    /**
+     * 处理触摸事件（兼容原有接口）
      * @param {number} x - 触摸点 x 坐标
      * @param {number} y - 触摸点 y 坐标
      */
@@ -481,6 +548,159 @@ export default class FriendsTab {
         }
     }
     
+    /**
+     * 绘制下拉刷新指示器
+     * @param {number} pullDistance - 下拉距离
+     */
+    drawPullRefreshIndicator(pullDistance) {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const tabHeight = 100;
+        const contentHeight = screenHeight - tabHeight;
+        const progress = Math.min(pullDistance / this.pullRefresh.threshold, 1);
+        
+        // 先重新渲染原有内容，但不包括tab栏区域
+        this.ctx.clearRect(0, 0, screenWidth, contentHeight);
+        
+        // 重新绘制背景内容
+        if (this.isDataLoaded && this.openDataContext) {
+            // 如果有开放数据域，重新绘制
+            const sharedCanvas = this.openDataContext.canvas;
+            if (sharedCanvas) {
+                this.ctx.drawImage(sharedCanvas, 0, 0, screenWidth, contentHeight, 0, 0, screenWidth, contentHeight);
+            }
+        } else if (this.isDataLoaded) {
+            // 绘制备用界面背景
+            this.ctx.fillStyle = '#f0f0f0';
+            this.ctx.fillRect(0, 0, screenWidth, contentHeight);
+            
+            this.ctx.fillStyle = '#333333';
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('好友相似度排行榜', screenWidth/2, 100);
+        } else {
+            // 绘制加载界面背景
+            this.ctx.fillStyle = '#f5f5f5';
+            this.ctx.fillRect(0, 0, screenWidth, contentHeight);
+            
+            this.ctx.fillStyle = '#333333';
+            this.ctx.font = 'bold 20px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('好友排行榜', screenWidth / 2, 60);
+        }
+        
+        // 在顶部绘制下拉刷新指示器
+        if (pullDistance > 0) {
+            // 绘制下拉背景
+            this.ctx.fillStyle = `rgba(240, 240, 240, ${progress * 0.8})`;
+            this.ctx.fillRect(0, 0, screenWidth, Math.min(pullDistance, this.pullRefresh.maxPullDistance));
+            
+            // 绘制刷新图标或文字
+            this.ctx.fillStyle = '#666666';
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'center';
+            
+            const indicatorY = Math.min(pullDistance, this.pullRefresh.maxPullDistance);
+            if (progress >= 1) {
+                this.ctx.fillText('松开刷新', screenWidth / 2, indicatorY - 20);
+            } else {
+                this.ctx.fillText('下拉刷新', screenWidth / 2, indicatorY - 20);
+            }
+            
+            // 绘制进度指示器
+            const indicatorSize = 20;
+            const centerX = screenWidth / 2;
+            const centerY = indicatorY - 40;
+            
+            if (centerY > 10) { // 确保指示器在可见区域内
+                this.ctx.strokeStyle = '#007AFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, indicatorSize / 2, 0, 2 * Math.PI * progress);
+                this.ctx.stroke();
+            }
+        }
+    }
+
+    /**
+     * 触发刷新操作
+     */
+    async triggerRefresh() {
+        if (this.pullRefresh.isRefreshing) {
+            return;
+        }
+        
+        this.pullRefresh.isRefreshing = true;
+        console.log('🔄 触发好友tab下拉刷新');
+        
+        try {
+            // 显示刷新状态
+            this.drawRefreshingIndicator();
+            
+            // 重新加载数据
+            this.isDataLoaded = false;
+            await this.loadFriends();
+            
+            // 如果有用户答案，重新更新
+            if (this.userAnswers && this.userAnswers.length > 0) {
+                this.updateAnswers(this.userAnswers);
+            }
+            
+            console.log('✅ 好友tab刷新完成');
+        } catch (error) {
+            console.error('❌ 好友tab刷新失败:', error);
+        } finally {
+            // 延迟一下再隐藏刷新状态，让用户看到刷新完成
+            setTimeout(() => {
+                this.pullRefresh.isRefreshing = false;
+                this.render();
+            }, 500);
+        }
+    }
+
+    /**
+     * 绘制刷新中指示器
+     */
+    drawRefreshingIndicator() {
+        const screenWidth = window.innerWidth;
+        const indicatorHeight = 60;
+        
+        // 绘制刷新背景
+        this.ctx.fillStyle = 'rgba(240, 240, 240, 0.9)';
+        this.ctx.fillRect(0, 0, screenWidth, indicatorHeight);
+        
+        // 绘制刷新文字
+        this.ctx.fillStyle = '#007AFF';
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('正在刷新...', screenWidth / 2, indicatorHeight - 20);
+        
+        // 绘制旋转的加载图标
+        const centerX = screenWidth / 2;
+        const centerY = 25;
+        const radius = 10;
+        const rotation = (Date.now() / 100) % (2 * Math.PI);
+        
+        this.ctx.strokeStyle = '#007AFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, rotation, rotation + Math.PI * 1.5);
+        this.ctx.stroke();
+    }
+
+    /**
+     * 强制刷新数据（供外部调用）
+     */
+    async forceRefresh() {
+        console.log('🔄 强制刷新好友tab数据');
+        this.isDataLoaded = false;
+        await this.loadFriends();
+        
+        if (this.userAnswers && this.userAnswers.length > 0) {
+            this.updateAnswers(this.userAnswers);
+        }
+    }
+
     /**
      * 清理资源，停止刷新循环
      */

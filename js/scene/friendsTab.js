@@ -17,6 +17,7 @@ export default class FriendsTab {
         this.openDataContext = null;
         this.userAnswers = []; // 存储用户答案
         this.refreshTimer = null; // 刷新定时器
+        this.loadingTimer = null; // 加载动画定时器
         console.log('FriendsTab 构造函数被调用');
     }
 
@@ -151,14 +152,22 @@ export default class FriendsTab {
                     action: 'showSimilarityRanking'
                 });
                 
-                // 显示开放数据域的内容
-                this.showOpenDataContext();
+                // 延迟一下再显示开放数据域内容，确保数据已加载
+                setTimeout(() => {
+                    this.render(); // 重新渲染，这次会显示开放数据域内容
+                }, 100);
             } else {
                 console.warn('当前环境不支持开放数据域，显示备用界面');
-                this.drawFallbackUI();
+                // 停止加载动画
+                this.stopLoadingAnimation();
+                // 重新渲染，这次会显示备用界面
+                this.render();
             }
         } catch (error) {
             console.error('加载好友相似度排行榜失败:', error);
+            // 停止加载动画
+            this.stopLoadingAnimation();
+            // 显示错误信息
             this.drawError('加载排行榜失败: ' + error.message);
         }
     }
@@ -380,8 +389,78 @@ export default class FriendsTab {
      * 渲染方法
      */
     render() {
+        // 如果还没有加载过数据，显示加载界面
+        if (!this.isDataLoaded) {
+            this.drawLoadingUI();
+            return;
+        }
+        
+        // 如果有开放数据域，显示开放数据域内容
         if (this.openDataContext) {
             this.showOpenDataContext();
+        } else {
+            // 否则显示备用界面
+            this.drawFallbackUI();
+        }
+    }
+    
+    /**
+     * 绘制加载界面
+     */
+    drawLoadingUI() {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const contentHeight = screenHeight - 100; // 减去底部tab栏高度
+        
+        // 清空画布（除了底部tab栏）
+        this.ctx.clearRect(0, 0, screenWidth, contentHeight);
+        
+        // 绘制背景
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.fillRect(0, 0, screenWidth, contentHeight);
+        
+        // 绘制标题
+        this.ctx.fillStyle = '#333333';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('好友排行榜', screenWidth / 2, 60);
+        
+        // 绘制加载提示
+        this.ctx.fillStyle = '#666666';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText('正在加载好友数据...', screenWidth / 2, contentHeight / 2);
+        
+        // 绘制加载动画（简单的点点点）
+        const dots = Math.floor(Date.now() / 500) % 4;
+        const loadingText = '加载中' + '.'.repeat(dots);
+        this.ctx.fillStyle = '#999999';
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText(loadingText, screenWidth / 2, contentHeight / 2 + 40);
+        
+        // 启动加载动画定时器（如果还没有启动）
+        if (!this.loadingTimer) {
+            this.loadingTimer = setInterval(() => {
+                // 检查是否应该停止加载动画
+                if (this.isDataLoaded && this.openDataContext) {
+                    // 数据加载完成，停止动画并重新渲染
+                    this.stopLoadingAnimation();
+                    this.render();
+                } else if (!this.isDataLoaded) {
+                    // 还在加载中，继续显示加载动画
+                    this.drawLoadingUI();
+                }
+                // 如果isDataLoaded为true但openDataContext为null，说明加载失败，保持当前状态
+            }, 500);
+        }
+    }
+    
+    /**
+     * 停止加载动画
+     */
+    stopLoadingAnimation() {
+        if (this.loadingTimer) {
+            clearInterval(this.loadingTimer);
+            this.loadingTimer = null;
         }
     }
     
@@ -390,6 +469,7 @@ export default class FriendsTab {
      */
     destroy() {
         this.stopRefreshLoop();
+        this.stopLoadingAnimation();
         console.log('FriendsTab 资源已清理');
     }
 }

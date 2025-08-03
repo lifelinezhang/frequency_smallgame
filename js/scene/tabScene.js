@@ -56,13 +56,17 @@ export default class TabScene {
         // 确保tab已经初始化
         const currentTab = this.getTab(index);
         
-        // 如果是好友tab，确保数据已加载
+        // 先显示当前tab（可能是加载界面）
+        this.showCurrentTab();
+        
+        // 如果是好友tab，异步加载数据
         if (index === 1 && currentTab && typeof currentTab.loadFriends === 'function') {
             console.log('触发好友tab数据加载');
-            currentTab.loadFriends();
+            // 异步加载，避免阻塞界面显示
+            setTimeout(() => {
+                currentTab.loadFriends();
+            }, 50);
         }
-        
-        this.showCurrentTab();
     }
 
     showCurrentTab() {

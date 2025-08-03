@@ -178,10 +178,8 @@ export default class ResultScene {
                 && x <= _this.rankSprite.x + _this.rankSprite.width
                 && y >= _this.rankSprite.y
                 && y <= _this.rankSprite.y + _this.rankSprite.height) {
-                // 排行榜也应该是实时的，所以需要sharedCanvas 绘制新的排行榜
-                _this.messageSharecanvas();
-                _this.loop();
-                wx.offTouchStart(); // 在分享canvas还是会响应事件，所以先解除事件绑定
+                // 直接跳转到好友tab，不显示排行榜
+                _this.goToFriendsTab();
             } 
             // 检查分享按钮
             else if (x >= _this.reportSprite.x
@@ -223,6 +221,46 @@ export default class ResultScene {
         const Director = require('../Director').default;
         const director = Director.getInstance();
         director.backToTabScene();
+    }
+    
+    /**
+     * 跳转到好友tab
+     * 直接切换到TabScene的好友排行榜页面
+     */
+    goToFriendsTab() {
+        // 停止当前循环
+        if (this.requestId) {
+            cancelAnimationFrame(this.requestId);
+        }
+        
+        // 解除事件绑定
+        wx.offTouchStart();
+        
+        // 获取Director实例
+        const Director = require('../Director').default;
+        const director = Director.getInstance();
+        
+        // 清除画布
+        let ctx = DataStore.getInstance().ctx;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        
+        // 恢复或创建TabScene
+        if (director.tabScene) {
+            // 切换到好友tab（索引1）
+            director.tabScene.switchTab(1);
+            director.tabScene.resume();
+        } else {
+            director.showTabScene(ctx);
+            // 设置默认显示好友tab
+            if (director.tabScene) {
+                director.tabScene.switchTab(1);
+            }
+        }
+        
+        // 更新当前画布状态
+        DataStore.getInstance().currentCanvas = 'tabScene';
+        
+        console.log('已跳转到好友tab');
     }
     
     /**

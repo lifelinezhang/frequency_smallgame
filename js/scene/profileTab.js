@@ -484,6 +484,9 @@ export default class ProfileTab {
                 title: '准备答题中...'
             });
             
+            // 清理之前的答题数据
+            this.clearPreviousQuizData();
+            
             // 调用后端开始答题接口
             const quizResult = await startQuizAPI();
             
@@ -526,9 +529,14 @@ export default class ProfileTab {
                     console.log('转换后的题目数据:', convertedQuestions);
                 }
                 
-                DataStore.getInstance().currentTabScene = DataStore.getInstance().director.tabScene;
+                // 重置Director的答题索引，确保从第一题开始
+                const director = DataStore.getInstance().director;
+                director.currentIndex = 0;
+                console.log('已重置Director答题索引为:', director.currentIndex);
+                
+                DataStore.getInstance().currentTabScene = director.tabScene;
                 wx.hideLoading();
-                DataStore.getInstance().director.toQuestionScene();
+                director.toQuestionScene();
             } else {
                 throw new Error(quizResult.msg || '开始答题失败');
             }
@@ -545,5 +553,40 @@ export default class ProfileTab {
     showMyReports() {
         // 显示完整的报告列表
         console.log('显示我的报告列表');
+    }
+    
+    /**
+     * 清理之前的答题数据
+     * 确保新的答题会话从干净的状态开始
+     */
+    clearPreviousQuizData() {
+        console.log('🧹 开始清理之前的答题数据');
+        
+        // 清理DataStore中的答题会话数据
+        const dataStore = DataStore.getInstance();
+        if (dataStore.quizSession) {
+            console.log('清理DataStore中的quizSession');
+            dataStore.quizSession = null;
+        }
+        
+        // 清理Director中的答题状态
+        const director = dataStore.director;
+        if (director) {
+            console.log('重置Director的currentIndex');
+            director.currentIndex = 0;
+        }
+        
+        // 清理微信本地存储中的答题数据
+        try {
+            wx.removeStorageSync('lastQuizAnswers');
+            console.log('已清理本地存储中的lastQuizAnswers');
+        } catch (error) {
+            console.warn('清理本地存储失败:', error);
+        }
+        
+        // 清理微信云存储中的答题数据（可选，根据需求决定）
+        // 注意：这里不清理云存储，因为云存储的数据用于好友排行榜比较
+        
+        console.log('✅ 答题数据清理完成');
     }
 }

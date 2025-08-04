@@ -1,6 +1,6 @@
 // API请求工具函数
 export const apiRequest = async (url, options = {}) => {
-    const baseURL = 'http://127.0.0.1:8098/api/web'; // 你的API域名
+    const baseURL = 'http://101.43.88.252:8098/api/web'; // 你的API域名
     
     const defaultOptions = {
         method: 'GET',

@@ -189,16 +189,16 @@ export default class Director {
                 this.updateFriendsTabWithAnswers(userAnswers);
                 
                 // 保存答案到本地存储（可选）
-                try {
-                    wx.setStorageSync('lastQuizAnswers', {
-                        answers: userAnswers,
-                        timestamp: Date.now(),
-                        totalQuestions: userAnswers.length
-                    });
-                    console.log('完整答案已保存到本地存储');
-                } catch (error) {
-                    console.error('保存答案到本地存储失败:', error);
-                }
+                // try {
+                //     wx.setStorageSync('lastQuizAnswers', {
+                //         answers: userAnswers,
+                //         timestamp: Date.now(),
+                //         totalQuestions: userAnswers.length
+                //     });
+                //     console.log('完整答案已保存到本地存储');
+                // } catch (error) {
+                //     console.error('保存答案到本地存储失败:', error);
+                // }
             } else {
                 console.warn('获取答题记录失败，响应数据为空');
                 // 如果接口调用失败，回退到本地数据

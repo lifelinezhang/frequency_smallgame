@@ -254,13 +254,6 @@ export default class FriendsTab {
             if (this.openDataContext && this.openDataContext.canvas) {
                 refreshCount++;
                 
-                // 每10次刷新输出一次调试信息
-                if (refreshCount % 10 === 1) {
-                    console.log(`🔄 刷新开放数据域 #${refreshCount}`);
-                    console.log('- 画布存在:', !!this.openDataContext.canvas);
-                    console.log('- 画布尺寸:', this.openDataContext.canvas.width, 'x', this.openDataContext.canvas.height);
-                }
-                
                 // 只清空内容区域，保留底部tab栏（高度100px）
                 this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
                 

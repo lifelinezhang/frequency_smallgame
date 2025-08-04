@@ -424,16 +424,25 @@ function calculateSimilarity() {
     
     console.log('📊 处理后的用户答案数组:', userAnswersArray);
     
-    similarityRanking = friendsData.map((friend, index) => {
-        console.log(`\n🔄 计算与好友 ${friend.nickname} 的相似度 (${index + 1}/${friendsData.length})`);
-        const similarity = calculateAnswerSimilarity(userAnswersArray, friend.answers);
-        
-        return {
-            ...friend,
-            similarity: similarity,
-            similarityPercentage: Math.round(similarity * 100)
-        };
-    });
+    similarityRanking = friendsData
+        .filter(friend => {
+            // 过滤掉没有答题数据的好友
+            const hasAnswers = friend.answers && Array.isArray(friend.answers) && friend.answers.length > 0;
+            if (!hasAnswers) {
+                console.log(`⏭️ 跳过好友 ${friend.nickname}：没有答题数据`);
+            }
+            return hasAnswers;
+        })
+        .map((friend, index) => {
+            console.log(`\n🔄 计算与好友 ${friend.nickname} 的相似度 (${index + 1}/${friendsData.length})`);
+            const similarity = calculateAnswerSimilarity(userAnswersArray, friend.answers);
+            
+            return {
+                ...friend,
+                similarity: similarity,
+                similarityPercentage: Math.round(similarity * 100)
+            };
+        });
     
     // 按相似度排序，相似度相同时按时间排序
     similarityRanking.sort((a, b) => {

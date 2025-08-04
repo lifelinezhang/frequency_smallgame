@@ -179,7 +179,6 @@ export default class TabScene {
             }
         }
         
-        console.log('Tab栏绘制完成，当前选中tab:', this.currentTab);
     }
 
     /**

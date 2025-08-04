@@ -242,6 +242,9 @@ export default class ProfileTab {
                 this.isLoggedIn = true;
                 this.userInfo = userInfo;
                 
+                // 清除之前的云存储数据
+                this.clearPreviousCloudData();
+                
                 // 隐藏登录按钮
                 if (this.loginButton) {
                     this.loginButton.destroy();
@@ -680,6 +683,32 @@ export default class ProfileTab {
         // 注意：这里不清理云存储，因为云存储的数据用于好友排行榜比较
         
         console.log('✅ 答题数据清理完成');
+    }
+
+    /**
+     * 清理之前的云存储分享数据
+     * 在用户登录时调用，确保清除之前的分享数据
+     */
+    clearPreviousCloudData() {
+        console.log('🧹 开始清理之前的云存储分享数据');
+        
+        try {
+            // 清除微信云存储中的所有答题相关数据
+            wx.removeUserCloudStorage({
+                keyList: ['completeAnswers', 'answers', 'timestamp', 'totalQuestions'],
+                success: (res) => {
+                    console.log('✅ 云存储数据清理成功:', res);
+                },
+                fail: (error) => {
+                    console.warn('⚠️ 云存储数据清理失败:', error);
+                    // 清理失败不影响登录流程，只记录警告
+                }
+            });
+        } catch (error) {
+            console.warn('⚠️ 调用wx.removeUserCloudStorage失败:', error);
+        }
+        
+        console.log('✅ 云存储分享数据清理完成');
     }
 
     /**

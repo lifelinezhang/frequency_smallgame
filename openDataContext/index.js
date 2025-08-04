@@ -430,8 +430,17 @@ function calculateSimilarity() {
             const hasAnswers = friend.answers && Array.isArray(friend.answers) && friend.answers.length > 0;
             if (!hasAnswers) {
                 console.log(`⏭️ 跳过好友 ${friend.nickname}：没有答题数据`);
+                return false;
             }
-            return hasAnswers;
+            
+            // 过滤掉当前用户自己（排行榜中不显示自己）
+            const isCurrentUser = myInfo && myInfo.openid && friend.openid === myInfo.openid;
+            if (isCurrentUser) {
+                console.log(`⏭️ 跳过当前用户 ${friend.nickname}：不在排行榜中显示自己`);
+                return false;
+            }
+            
+            return true;
         })
         .map((friend, index) => {
             console.log(`\n🔄 计算与好友 ${friend.nickname} 的相似度 (${index + 1}/${friendsData.length})`);
@@ -911,6 +920,37 @@ function drawError(message) {
     context.fillText(message, screenWidth / 2, contentHeight / 2);
 }
 
+/**
+ * 在开放数据域中保存用户答案到微信云存储
+ * @param {Object} data - 包含答案数据的对象
+ */
+function saveUserAnswersToCloud(data) {
+    if (typeof wx.setUserCloudStorage === 'function' && data) {
+        console.log('🔄 开放数据域开始保存云存储数据:', data);
+        
+        wx.setUserCloudStorage({
+            KVDataList: [
+                { key: 'completeAnswers', value: data.completeAnswers },
+                { key: 'answers', value: data.answers },
+                { key: 'timestamp', value: data.timestamp },
+                { key: 'totalQuestions', value: data.totalQuestions }
+            ],
+            success: () => {
+                console.log('✅ 开放数据域：完整答题记录保存到云存储成功！');
+                console.log('📊 保存的数据键值:', Object.keys(data));
+            },
+            fail: (error) => {
+                console.error('❌ 开放数据域：答案保存到云存储失败:', error);
+            }
+        });
+    } else {
+        console.warn('⚠️ 开放数据域：无法保存答案到云存储', {
+            hasWxFunction: typeof wx.setUserCloudStorage === 'function',
+            hasData: !!data
+        });
+    }
+}
+
 // 监听主域消息
 wx.onMessage(data => {
     console.log('开放数据域接收到消息:', data);
@@ -932,6 +972,10 @@ wx.onMessage(data => {
                     getFriendsSimilarityRanking();
                 }
             }
+            break;
+        case 'saveUserAnswers':
+            console.log('💾 接收到保存用户答案消息');
+            saveUserAnswersToCloud(data.data);
             break;
         default:
             console.log('未知消息类型:', data.type);

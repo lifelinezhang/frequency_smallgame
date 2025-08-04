@@ -250,16 +250,17 @@ export default class Director {
     updateFriendsTabWithAnswers(userAnswers) {
         try {
             // 获取TabScene实例（隐藏推荐tab后，好友tab索引变为0）
-            if (this.tabScene && this.tabScene.tabs && this.tabScene.tabs[0]) {
-                const friendsTab = this.tabScene.tabs[0];
+            if (this.tabScene) {
+                // 确保好友标签页被创建
+                const friendsTab = this.tabScene.getTab(0);
                 if (friendsTab && typeof friendsTab.setUserAnswers === 'function') {
-                    console.log('更新好友标签页答案数据');
+                    console.log('✅ 更新好友标签页答案数据');
                     friendsTab.setUserAnswers(userAnswers);
                 } else {
                     console.warn('好友标签页未初始化或缺少setUserAnswers方法');
                 }
             } else {
-                console.warn('TabScene或好友标签页未初始化');
+                console.warn('TabScene未初始化');
             }
         } catch (error) {
             console.error('更新好友标签页答案失败:', error);

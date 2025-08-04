@@ -64,7 +64,7 @@ export default class FriendsTab {
      * @param {Array} answers - 完整的答案数组，包含题目ID和选择信息
      */
     saveAnswersToCloud(answers) {
-        if (typeof wx.setUserCloudStorage === 'function' && answers && answers.length > 0) {
+        if (answers && answers.length > 0) {
             // 确保保存完整的答案数据结构
             const completeAnswersData = {
                 answers: answers, // 保存完整的答案对象数组
@@ -73,34 +73,30 @@ export default class FriendsTab {
                 version: '1.0' // 添加版本号以便后续兼容性处理
             };
             
-            const answersString = JSON.stringify(completeAnswersData);
-            const timestamp = Date.now();
-            
             console.log('🚀 准备保存到云存储的答案数据:');
-             console.log('- 答案总数:', answers.length);
-             console.log('- 完整数据结构:', completeAnswersData);
-             console.log('- 第一个答案示例:', answers[0]);
-             console.log('- 最后一个答案示例:', answers[answers.length - 1]);
-             
-             wx.setUserCloudStorage({
-                 KVDataList: [
-                     { key: 'completeAnswers', value: answersString }, // 使用新的key保存完整数据
-                     { key: 'answers', value: JSON.stringify(answers.map(a => a.selectedOption)) }, // 保持兼容性
-                     { key: 'timestamp', value: timestamp.toString() },
-                     { key: 'totalQuestions', value: answers.length.toString() }
-                 ],
-                 success: () => {
-                     console.log('✅ 完整答题记录保存到云存储成功！');
-                     console.log('📊 答题记录详情: 共', answers.length, '道题目');
-                     console.log('🔍 数据来源: 后端接口getAnswerHistory');
-                 },
-                fail: (error) => {
-                    console.error('答案保存到云存储失败:', error);
-                }
-            });
+            console.log('- 答案总数:', answers.length);
+            console.log('- 完整数据结构:', completeAnswersData);
+            console.log('- 第一个答案示例:', answers[0]);
+            console.log('- 最后一个答案示例:', answers[answers.length - 1]);
+            
+            // 通过开放数据域保存云存储数据
+            const openDataContext = wx.getOpenDataContext();
+            if (openDataContext) {
+                console.log('📤 通过开放数据域保存云存储数据');
+                openDataContext.postMessage({
+                    type: 'saveUserAnswers',
+                    data: {
+                        completeAnswers: JSON.stringify(completeAnswersData),
+                        answers: JSON.stringify(answers.map(a => a.selectedOption)),
+                        timestamp: Date.now().toString(),
+                        totalQuestions: answers.length.toString()
+                    }
+                });
+            } else {
+                console.warn('⚠️ 无法获取开放数据域实例');
+            }
         } else {
             console.warn('无法保存答案到云存储：', {
-                hasWxFunction: typeof wx.setUserCloudStorage === 'function',
                 hasAnswers: !!(answers && answers.length > 0),
                 answersLength: answers ? answers.length : 0
             });

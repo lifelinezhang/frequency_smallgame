@@ -146,10 +146,20 @@ export default class QuestionPage{
         // 显示选择效果
         this.drawChoiceItem(index, 'select_right', this.reDrawCanvas);
         
-        // 延迟跳转到下一题
-        setTimeout(() => {
-            DataStore.getInstance().director.nextQuestionScene();
-        }, 10);
+        // 检查是否是最后一题
+        const quizSession = DataStore.getInstance().quizSession;
+        const totalQuestions = quizSession ? quizSession.questions.length : 10;
+        const isLastQuestion = quizSession && quizSession.currentIndex === totalQuestions - 1;
+        
+        if (isLastQuestion) {
+            console.log('这是最后一题，不自动跳转，等待答题完成处理');
+            // 最后一题不自动跳转，等待prepareQuizCompletion处理
+        } else {
+            // 延迟跳转到下一题
+            setTimeout(() => {
+                DataStore.getInstance().director.nextQuestionScene();
+            }, 10);
+        }
     }
     
     // 提交答案到后端的方法
@@ -209,11 +219,28 @@ export default class QuestionPage{
             const totalQuestions = quizSession.questions.length;
             if (quizSession.currentIndex === totalQuestions - 1) {
                 console.log('这是最后一题，准备完成答题');
+                // 显示提交提示
+                wx.showLoading({
+                    title: '正在提交答题记录，请稍候...',
+                    mask: true
+                });
                 this.prepareQuizCompletion();
             }
             
         } catch (error) {
             console.error('提交答案失败:', error);
+            
+            // 如果是最后一题提交失败，隐藏加载提示并显示错误信息
+            const quizSession = DataStore.getInstance().quizSession;
+            const totalQuestions = quizSession ? quizSession.questions.length : 0;
+            if (quizSession && quizSession.currentIndex === totalQuestions - 1) {
+                wx.hideLoading();
+                wx.showToast({
+                    title: '提交答题记录失败，请检查网络后重试',
+                    icon: 'none',
+                    duration: 3000
+                });
+            }
         }
     }
     
@@ -232,6 +259,15 @@ export default class QuestionPage{
             // 标记答题完成状态
             quizSession.isCompleted = true;
             quizSession.completedAt = Date.now();
+            
+            // 调用Director的答题完成处理方法
+            const director = DataStore.getInstance().director;
+            if (director && typeof director.handleQuizCompletion === 'function') {
+                console.log('调用Director的handleQuizCompletion方法');
+                director.handleQuizCompletion();
+            } else {
+                console.error('Director实例或handleQuizCompletion方法不存在');
+            }
         }
     }
     

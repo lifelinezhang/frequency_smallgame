@@ -4,6 +4,7 @@ import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
 import FriendsTab from './friendsTab';
 import ProfileTab from './profileTab';
+import ShareTab from './shareTab';
 
 const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
@@ -12,9 +13,10 @@ export default class TabScene {
     constructor(ctx) {
         this.ctx = ctx;
         this.canvas = DataStore.getInstance().canvas;
-        this.currentTab = 1; // 默认显示"我的"页面（索引1，隐藏推荐tab后）
+        this.currentTab = 2; // 默认显示"我的"页面
         this.tabs = [
             null, // 好友tab
+            null, // 分享tab
             null  // 我的tab
         ];
         
@@ -24,7 +26,7 @@ export default class TabScene {
         this.init();
     }
 
-    // 获取或创建tab实例（隐藏推荐tab后的索引映射）
+    // 获取或创建tab实例
     getTab(index) {
         if (!this.tabs[index]) {
             switch(index) {
@@ -33,6 +35,10 @@ export default class TabScene {
                     this.tabs[index] = new FriendsTab(this.ctx);
                     break;
                 case 1:
+                    console.log('创建ShareTab实例');
+                    this.tabs[index] = new ShareTab(this.ctx);
+                    break;
+                case 2:
                     this.tabs[index] = new ProfileTab(this.ctx);
                     break;
             }
@@ -58,7 +64,7 @@ export default class TabScene {
         // 先显示当前tab（可能是加载界面）
         this.showCurrentTab();
         
-        // 如果是好友tab，每次进入都强制刷新数据（隐藏推荐tab后，好友tab索引变为0）
+        // 如果是好友tab，每次进入都强制刷新数据
         if (index === 0 && currentTab) {
             console.log('进入好友tab，强制刷新数据');
             // 异步刷新，避免阻塞界面显示
@@ -67,6 +73,16 @@ export default class TabScene {
                     currentTab.forceRefresh();
                 } else if (typeof currentTab.loadFriends === 'function') {
                     currentTab.loadFriends();
+                }
+            }, 50);
+        }
+        
+        // 如果是分享tab，每次进入都刷新数据
+        if (index === 1 && currentTab) {
+            console.log('进入分享tab，刷新数据');
+            setTimeout(() => {
+                if (typeof currentTab.refresh === 'function') {
+                    currentTab.refresh();
                 }
             }, 50);
         }
@@ -123,9 +139,9 @@ export default class TabScene {
      * 确保tab栏始终可见且样式清晰
      */
     drawTabBar() {
-        // 绘制底部tab栏（隐藏推荐tab，只显示好友和我的）
+        // 绘制底部tab栏（好友、分享、我的）
         const tabHeight = 100;
-        const tabWidth = screenWidth / 2; // 改为2个tab，每个占一半宽度
+        const tabWidth = screenWidth / 3; // 3个tab，每个占三分之一宽度
         
         // 绘制tab栏背景
         this.ctx.fillStyle = '#f8f8f8';
@@ -139,9 +155,9 @@ export default class TabScene {
         this.ctx.lineTo(screenWidth, screenHeight - tabHeight);
         this.ctx.stroke();
         
-        // 绘制tab按钮（隐藏推荐tab）
-        const tabNames = ['好友', '我的'];
-        for (let i = 0; i < 2; i++) {
+        // 绘制tab按钮
+        const tabNames = ['好友', '分享', '我的'];
+        for (let i = 0; i < 3; i++) {
             const x = i * tabWidth;
             const y = screenHeight - tabHeight;
             
@@ -169,7 +185,7 @@ export default class TabScene {
             this.ctx.fillText(tabNames[i], x + tabWidth/2, y + tabHeight/2 + 5);
             
             // 绘制tab之间的分隔线
-            if (i < 1) {
+            if (i < 2) {
                 this.ctx.strokeStyle = '#e0e0e0';
                 this.ctx.lineWidth = 1;
                 this.ctx.beginPath();
@@ -224,11 +240,11 @@ export default class TabScene {
             
             console.log('TabScene 触摸开始事件:', x, y);
             
-            // 检查是否点击了tab栏（隐藏推荐tab后，只有2个tab）
+            // 检查是否点击了tab栏（3个tab）
             if (y > screenHeight - 100) {
-                const tabIndex = Math.floor(x / (screenWidth / 2));
+                const tabIndex = Math.floor(x / (screenWidth / 3));
                 console.log('点击了tab:', tabIndex);
-                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 2) {
+                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 3) {
                     this.switchTab(tabIndex);
                 }
             } else {

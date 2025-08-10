@@ -185,13 +185,13 @@ GET /api/key/info
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataUserKeyInfoVO](#schemaresponsedatauserkeyinfovo)|
 
-## POST 解锁报告
+## POST 解锁同频度报告
 
 POST /api/key/unlock
 
-解锁报告
-解锁报告
-使用钥匙解锁其他用户的报告
+解锁同频度报告
+解锁同频度报告
+使用钥匙解锁其他用户的同频度报告
 
 > Body 请求参数
 
@@ -206,7 +206,7 @@ POST /api/key/unlock
 
 |名称|位置|类型|必选|说明|
 |---|---|---|---|---|
-|body|body|[UnlockReportCommand](#schemaunlockreportcommand)| 否 |none|
+|body|body|[UnlockFrequencyReportCommand](#schemaunlockfrequencyreportcommand)| 否 |none|
 
 > 返回示例
 
@@ -214,19 +214,9 @@ POST /api/key/unlock
 
 ```json
 {
-  "code": "",
-  "msg": "",
-  "data": {
-    "id": 0,
-    "custId": 0,
-    "title": "",
-    "content": "",
-    "totalCount": 0,
-    "completionTime": "",
-    "isPublic": 0,
-    "viewCount": 0,
-    "createTime": ""
-  }
+  "code": "UNLOCK_FREQUENCY_REPORT_ERROR",
+  "msg": "解锁同频度报告失败：",
+  "data": {}
 }
 ```
 
@@ -234,7 +224,7 @@ POST /api/key/unlock
 
 |状态码|状态码含义|说明|数据模型|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataReportVO](#schemaresponsedatareportvo)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseData](#schemaresponsedata)|
 
 ## GET 获取解锁记录
 
@@ -892,16 +882,15 @@ GET /api/frequency/friends
   "msg": "",
   "data": [
     {
-      "id": 0,
+      "reportId": 0,
       "firstCustId": 0,
       "firstCustNickname": "",
       "firstCustAvatar": "",
       "secondCustId": 0,
       "secondCustNickname": "",
       "secondCustAvatar": "",
-      "isFriend": 0,
-      "frequencyScore": 0,
-      "frequencyDesc": "",
+      "isFriend": false,
+      "hasReport": false,
       "createTime": ""
     }
   ]
@@ -916,16 +905,16 @@ GET /api/frequency/friends
 
 ## GET 获取同频度关系
 
-GET /api/frequency/relation/{targetUserId}
+GET /api/frequency/relation/{reportId}
 
 获取同频度关系
-获取与指定用户的同频度关系信息
+根据同频度关系ID获取同频度信息
 
 ### 请求参数
 
 |名称|位置|类型|必选|说明|
 |---|---|---|---|---|
-|targetUserId|path|integer| 是 |目标用户ID|
+|reportId|path|integer| 是 |同频度关系ID|
 
 > 返回示例
 
@@ -936,17 +925,8 @@ GET /api/frequency/relation/{targetUserId}
   "code": "",
   "msg": "",
   "data": {
-    "id": 0,
-    "firstCustId": 0,
-    "firstCustNickname": "",
-    "firstCustAvatar": "",
-    "secondCustId": 0,
-    "secondCustNickname": "",
-    "secondCustAvatar": "",
-    "isFriend": 0,
-    "frequencyScore": 0,
-    "frequencyDesc": "",
-    "createTime": ""
+    "frequency": "",
+    "report": ""
   }
 }
 ```
@@ -955,7 +935,7 @@ GET /api/frequency/relation/{targetUserId}
 
 |状态码|状态码含义|说明|数据模型|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataFrequencyRelationVO](#schemaresponsedatafrequencyrelationvo)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataFrequencyVO](#schemaresponsedatafrequencyvo)|
 
 # 数据模型
 
@@ -1248,6 +1228,30 @@ GET /api/frequency/relation/{targetUserId}
 |viewCount|integer|false|none||查看次数|
 |createTime|string|false|none||创建时间|
 
+<h2 id="tocS_ResponseData">ResponseData</h2>
+
+<a id="schemaresponsedata"></a>
+<a id="schema_ResponseData"></a>
+<a id="tocSresponsedata"></a>
+<a id="tocsresponsedata"></a>
+
+```json
+{
+  "code": "string",
+  "msg": "string",
+  "data": {}
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|code|string|false|none||返回码|
+|msg|string|false|none||返回描述|
+|data|object|false|none||none|
+
 <h2 id="tocS_ResponseDataReportVO">ResponseDataReportVO</h2>
 
 <a id="schemaresponsedatareportvo"></a>
@@ -1281,6 +1285,28 @@ GET /api/frequency/relation/{targetUserId}
 |code|string|false|none||返回码|
 |msg|string|false|none||返回描述|
 |data|[ReportVO](#schemareportvo)|false|none||none|
+
+<h2 id="tocS_UnlockFrequencyReportCommand">UnlockFrequencyReportCommand</h2>
+
+<a id="schemaunlockfrequencyreportcommand"></a>
+<a id="schema_UnlockFrequencyReportCommand"></a>
+<a id="tocSunlockfrequencyreportcommand"></a>
+<a id="tocsunlockfrequencyreportcommand"></a>
+
+```json
+{
+  "reportId": 0,
+  "keyCost": 1
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|reportId|integer(int64)|true|none||要解锁的同频度关系ID|
+|keyCost|integer|false|none||消耗钥匙数量|
 
 <h2 id="tocS_UnlockReportCommand">UnlockReportCommand</h2>
 
@@ -1847,16 +1873,15 @@ GET /api/frequency/relation/{targetUserId}
 
 ```json
 {
-  "id": 0,
+  "reportId": 0,
   "firstCustId": 0,
   "firstCustNickname": "string",
   "firstCustAvatar": "string",
   "secondCustId": 0,
   "secondCustNickname": "string",
   "secondCustAvatar": "string",
-  "isFriend": -127,
-  "frequencyScore": 0,
-  "frequencyDesc": "string",
+  "isFriend": true,
+  "hasReport": true,
   "createTime": "string"
 }
 
@@ -1866,16 +1891,15 @@ GET /api/frequency/relation/{targetUserId}
 
 |名称|类型|必选|约束|中文名|说明|
 |---|---|---|---|---|---|
-|id|integer(int64)|false|none||关系ID|
+|reportId|integer(int64)|false|none||同频度报告id|
 |firstCustId|integer(int64)|false|none||第一个客户ID|
 |firstCustNickname|string|false|none||第一个客户昵称|
 |firstCustAvatar|string|false|none||第一个客户头像|
 |secondCustId|integer(int64)|false|none||第二个客户ID|
 |secondCustNickname|string|false|none||第二个客户昵称|
 |secondCustAvatar|string|false|none||第二个客户头像|
-|isFriend|integer|false|none||是否是好友 0-不是 1-是|
-|frequencyScore|number|false|none||同频度分数(0-100)|
-|frequencyDesc|string|false|none||同频度解析|
+|isFriend|boolean|false|none||是否是好友 0-不是 1-是|
+|hasReport|boolean|false|none||是否有报告|
 |createTime|string|false|none||建立关系时间|
 
 <h2 id="tocS_ResponseDataFrequencyRelationVO">ResponseDataFrequencyRelationVO</h2>
@@ -1890,16 +1914,15 @@ GET /api/frequency/relation/{targetUserId}
   "code": "string",
   "msg": "string",
   "data": {
-    "id": 0,
+    "reportId": 0,
     "firstCustId": 0,
     "firstCustNickname": "string",
     "firstCustAvatar": "string",
     "secondCustId": 0,
     "secondCustNickname": "string",
     "secondCustAvatar": "string",
-    "isFriend": -127,
-    "frequencyScore": 0,
-    "frequencyDesc": "string",
+    "isFriend": true,
+    "hasReport": true,
     "createTime": "string"
   }
 }
@@ -1934,6 +1957,28 @@ GET /api/frequency/relation/{targetUserId}
 |---|---|---|---|---|---|
 |targetUserId|integer(int64)|true|none||要计算同频度的目标用户ID|
 
+<h2 id="tocS_FrequencyVO">FrequencyVO</h2>
+
+<a id="schemafrequencyvo"></a>
+<a id="schema_FrequencyVO"></a>
+<a id="tocSfrequencyvo"></a>
+<a id="tocsfrequencyvo"></a>
+
+```json
+{
+  "frequency": "string",
+  "report": "string"
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|frequency|string|false|none||同频度|
+|report|string|false|none||报告详情|
+
 <h2 id="tocS_ResponseDataListFrequencyRelationVO">ResponseDataListFrequencyRelationVO</h2>
 
 <a id="schemaresponsedatalistfrequencyrelationvo"></a>
@@ -1947,16 +1992,15 @@ GET /api/frequency/relation/{targetUserId}
   "msg": "string",
   "data": [
     {
-      "id": 0,
+      "reportId": 0,
       "firstCustId": 0,
       "firstCustNickname": "string",
       "firstCustAvatar": "string",
       "secondCustId": 0,
       "secondCustNickname": "string",
       "secondCustAvatar": "string",
-      "isFriend": -127,
-      "frequencyScore": 0,
-      "frequencyDesc": "string",
+      "isFriend": true,
+      "hasReport": true,
       "createTime": "string"
     }
   ]
@@ -1971,4 +2015,31 @@ GET /api/frequency/relation/{targetUserId}
 |code|string|false|none||返回码|
 |msg|string|false|none||返回描述|
 |data|[[FrequencyRelationVO](#schemafrequencyrelationvo)]|false|none||none|
+
+<h2 id="tocS_ResponseDataFrequencyVO">ResponseDataFrequencyVO</h2>
+
+<a id="schemaresponsedatafrequencyvo"></a>
+<a id="schema_ResponseDataFrequencyVO"></a>
+<a id="tocSresponsedatafrequencyvo"></a>
+<a id="tocsresponsedatafrequencyvo"></a>
+
+```json
+{
+  "code": "string",
+  "msg": "string",
+  "data": {
+    "frequency": "string",
+    "report": "string"
+  }
+}
+
+```
+
+### 属性
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|code|string|false|none||返回码|
+|msg|string|false|none||返回描述|
+|data|[FrequencyVO](#schemafrequencyvo)|false|none||none|
 

@@ -6,7 +6,7 @@ import QuestionScene from './scene/questionScene';
 import ResultScene from './scene/resultScene';
 import DataStore from './base/DataStore';
 import TabScene from './scene/tabScene';
-import { getAnswerHistory } from './utils/api';
+import { getAnswerHistory, getFriendsList, getFrequencyReport, getMyReport } from './utils/api';
 const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
@@ -117,8 +117,8 @@ export default class Director {
         });
         
         if (this.currentIndex === totalQuestions - 1) {
-            console.log('🏁 已是最后一题，显示结果页面');
-            this.showResultScene();
+            console.log('🏁 已是最后一题，等待答题完成处理');
+            // 不再直接跳转到结果页面，而是等待prepareQuizCompletion调用handleQuizCompletion
             return;
         }
         
@@ -160,87 +160,145 @@ export default class Director {
      * 从后端获取用户的完整答题记录
      */
     async handleQuizCompletion() {
-        console.log('答题完成，开始获取用户答题记录');
+        console.log('答题完成，开始获取好友列表和同频度报告');
         
         try {
-            // 调用后端接口获取用户的完整答题记录
-            const response = await getAnswerHistory();
+            wx.showLoading({
+                title: '正在处理答题记录，请耐心等待...',
+                mask: true
+            });
             
-            if (response && response.data) {
-                 const answerHistory = response.data;
-                 console.log('🎯 从后端获取到用户答题记录:');
-                 console.log('- 答题记录总数:', answerHistory.length);
-                 console.log('- 完整记录数据:', answerHistory);
-                 console.log('- 第一条记录:', answerHistory[0]);
-                 console.log('- 最后一条记录:', answerHistory[answerHistory.length - 1]);
+            // 获取好友列表
+            const friendsResponse = await getFriendsList();
+            
+            if (friendsResponse && friendsResponse.data && friendsResponse.data.length > 0) {
+                console.log('获取到好友列表:', friendsResponse.data);
                 
-                // 转换答题记录格式以适配好友排行榜
-                const userAnswers = answerHistory.map((record, index) => ({
-                    questionId: record.questionId,
-                    selectedOption: record.answerContent,
-                    questionIndex: index,
-                    answerTime: record.answerTime,
-                    createTime: record.createTime
-                }));
+                // 获取第一个好友
+                const firstFriend = friendsResponse.data[0];
+                console.log('第一个好友信息:', firstFriend);
                 
-                console.log('转换后的答案数据:', userAnswers);
-                
-                // 将完整答案数据传递给好友排行榜
-                this.updateFriendsTabWithAnswers(userAnswers);
-                
-                // 保存答案到本地存储（可选）
-                // try {
-                //     wx.setStorageSync('lastQuizAnswers', {
-                //         answers: userAnswers,
-                //         timestamp: Date.now(),
-                //         totalQuestions: userAnswers.length
-                //     });
-                //     console.log('完整答案已保存到本地存储');
-                // } catch (error) {
-                //     console.error('保存答案到本地存储失败:', error);
-                // }
-            } else {
-                console.warn('获取答题记录失败，响应数据为空');
-                // 如果接口调用失败，回退到本地数据
-                this.handleQuizCompletionFallback();
+                try {
+                    // 获取与第一个好友的同频度报告
+                    const frequencyResponse = await getFrequencyReport(firstFriend.openId);
+                    
+                    if (frequencyResponse && frequencyResponse.data) {
+                        console.log('获取到同频度报告:', frequencyResponse.data);
+                        wx.hideLoading();
+                        
+                        // 显示同频度报告
+                        this.showFrequencyReport(frequencyResponse.data, firstFriend);
+                        return;
+                    }
+                } catch (frequencyError) {
+                    console.log('获取同频度报告失败:', frequencyError);
+                }
             }
+            
+            // 如果没有好友或获取同频度报告失败，跳转到我的报告页面
+            console.log('没有好友或获取同频度报告失败，跳转到我的报告页面');
+            wx.hideLoading();
+            this.showMyReportPage();
+            
         } catch (error) {
-            console.error('获取答题记录失败:', error);
-            // 如果接口调用失败，回退到本地数据
-            this.handleQuizCompletionFallback();
+            console.error('获取好友信息失败:', error);
+            wx.hideLoading();
+            wx.showToast({
+                title: '网络连接超时，正在为您跳转到个人报告',
+                icon: 'none',
+                duration: 2000
+            });
+            // 延迟跳转到我的报告页面
+            setTimeout(() => {
+                this.showMyReportPage();
+            }, 2000);
         }
     }
     
     /**
-     * 答题完成的回退处理（当接口调用失败时使用本地数据）
+     * 显示同频度报告
+     * @param {Object} reportData 同频度报告数据
+     * @param {Object} friendInfo 好友信息
      */
-    handleQuizCompletionFallback() {
-        console.log('使用本地数据作为回退方案');
+    showFrequencyReport(reportData, friendInfo) {
+        console.log('显示同频度报告:', reportData, friendInfo);
         
-        const quizSession = DataStore.getInstance().quizSession;
-        if (!quizSession || !quizSession.userAnswers) {
-            console.warn('没有找到本地用户答案数据');
-            return;
-        }
-        
-        // 提取用户的完整答案数组（包含题目ID和选择的选项）
-        const userAnswers = quizSession.userAnswers.map((answer, index) => {
-            if (answer && answer.questionId && answer.selectedOption) {
-                return {
-                    questionId: answer.questionId,
-                    selectedOption: answer.selectedOption,
-                    selectedIndex: answer.selectedIndex,
-                    questionIndex: index
-                };
+        // 显示同频度报告弹窗
+        wx.showModal({
+            title: `与${friendInfo.nickname || '好友'}的同频度`,
+            content: `同频度: ${reportData.frequency || 0}%\n相同答案数: ${reportData.sameAnswers || 0}\n总题目数: ${reportData.totalQuestions || 0}`,
+            showCancel: true,
+            cancelText: '返回',
+            confirmText: '查看详情',
+            success: (res) => {
+                if (res.confirm) {
+                    // 用户点击查看详情，可以跳转到详细报告页面
+                    this.showDetailedFrequencyReport(reportData, friendInfo);
+                } else {
+                    // 用户点击返回，跳转到我的报告页面
+                    this.showMyReportPage();
+                }
             }
-            return null;
-        }).filter(answer => answer !== null);
-        
-        console.log('本地答案数据:', userAnswers);
-        console.log('答案总数:', userAnswers.length);
-        
-        // 将完整答案数据传递给好友排行榜
-        this.updateFriendsTabWithAnswers(userAnswers);
+        });
+    }
+    
+    /**
+     * 显示详细的同频度报告
+     * @param {Object} reportData 同频度报告数据
+     * @param {Object} friendInfo 好友信息
+     */
+    showDetailedFrequencyReport(reportData, friendInfo) {
+        // 这里可以实现详细报告页面的显示逻辑
+        console.log('显示详细同频度报告');
+        // 暂时跳转到我的报告页面
+        this.showMyReportPage();
+    }
+    
+    /**
+     * 显示我的报告页面
+     */
+    async showMyReportPage() {
+        try {
+            wx.showLoading({
+                title: '正在加载个人报告，请稍候...',
+                mask: true
+            });
+            
+            const myReportResponse = await getMyReport();
+            
+            if (myReportResponse && myReportResponse.data) {
+                console.log('获取到我的报告:', myReportResponse.data);
+                wx.hideLoading();
+                
+                // 跳转到我的报告页面（ProfileTab）
+                this.backToTabScene();
+                
+                // 设置当前tab为我的页面并显示报告
+                if (this.tabScene) {
+                    this.tabScene.currentTab = 1; // 我的页面
+                    const profileTab = this.tabScene.getTab(1);
+                    if (profileTab && typeof profileTab.showMyReports === 'function') {
+                        profileTab.showMyReports();
+                    }
+                }
+            } else {
+                wx.hideLoading();
+                wx.showToast({
+                    title: '暂无报告数据',
+                    icon: 'none'
+                });
+                this.backToTabScene();
+            }
+        } catch (error) {
+            console.error('获取我的报告失败:', error);
+            wx.hideLoading();
+            wx.showToast({
+                title: '网络连接超时，获取个人报告失败，请稍后重试',
+                icon: 'none',
+                duration: 3000
+            });
+            this.backToTabScene();
+        }
     }
     
     /**

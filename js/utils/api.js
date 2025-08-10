@@ -7,7 +7,7 @@ export const apiRequest = async (url, options = {}) => {
         header: {
             'Content-Type': 'application/json',
         },
-        timeout: 10000
+        timeout: 30000  // 增加超时时间为30秒
     };
     
     const config = { ...defaultOptions, ...options };
@@ -145,6 +145,97 @@ export const getInvitationStats = async () => {
  */
 export const getInvitedUsers = async () => {
     return await apiRequest('/user/getInvitedUsers', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取好友列表
+ * @returns {Promise} 返回好友列表
+ */
+export const getFriendsList = async () => {
+    return await apiRequest('/api/frequency/friends', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取与指定好友的同频度报告
+ * @param {string} friendOpenId 好友的openId
+ * @returns {Promise} 返回同频度报告
+ */
+export const getFrequencyReport = async (friendOpenId) => {
+    return await apiRequest('/report/frequency', {
+        method: 'POST',
+        data: {
+            friendOpenId: friendOpenId
+        }
+    });
+};
+
+/**
+ * 获取我的报告
+ * @returns {Promise} 返回我的报告
+ */
+export const getMyReport = async () => {
+    return await apiRequest('/report/my', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取用户钥匙信息
+ * @returns {Promise} 返回钥匙信息
+ */
+export const getKeyInfo = async () => {
+    return await apiRequest('/api/key/info', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取已解锁的报告列表
+ * @returns {Promise} 返回已解锁报告列表
+ */
+export const getUnlockedReports = async () => {
+    return await apiRequest('/api/key/unlock-records', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 解锁好友报告
+ * @param {number} reportId - 报告ID
+ * @returns {Promise} 返回解锁结果
+ */
+export const unlockFriendReport = async (reportId) => {
+    return await apiRequest('/api/key/unlock', {
+        method: 'POST',
+        data: {
+            reportId: reportId,
+            keyCost: 1
+        }
+    });
+};
+
+/**
+ * 检查报告解锁状态
+ * @param {number} reportId - 报告ID
+ * @returns {Promise} 返回解锁状态
+ */
+export const checkUnlockStatus = async (reportId) => {
+    return await apiRequest(`/api/key/check-unlock/${reportId}`, {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取好友报告详情
+ * @param {number} reportId - 报告ID
+ * @returns {Promise} 返回报告详情
+ */
+export const getFriendReportDetail = async (reportId) => {
+    return await apiRequest(`/api/frequency/relation/${reportId}`, {
         method: 'GET'
     });
 };

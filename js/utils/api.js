@@ -59,17 +59,30 @@ export const apiRequest = async (url, options = {}) => {
     });
 };
 
-// 用户登录
-export const userLogin = async (code, userInfo) => {
+/**
+ * 用户登录
+ * @param {string} code 微信登录code
+ * @param {object} userInfo 用户信息
+ * @param {string} inviterOpenId 邀请者openId（可选）
+ * @returns {Promise} 返回登录结果
+ */
+export const userLogin = async (code, userInfo, inviterOpenId = null) => {
+    const loginData = {
+        code: code,
+        openid: userInfo.openid,
+        nickname: userInfo.nickName,
+        avatar: userInfo.avatarUrl,
+        gender: userInfo.gender
+    };
+    
+    // 如果有邀请者信息，添加到登录数据中
+    if (inviterOpenId) {
+        loginData.inviterOpenId = inviterOpenId;
+    }
+    
     return await apiRequest('/api/user/login', {  // 去掉重复的 /api/web
         method: 'POST',
-        data: {
-            code: code,
-            openid: userInfo.openid,
-            nickname: userInfo.nickName,
-            avatar: userInfo.avatarUrl,
-            gender: userInfo.gender
-        }
+        data: loginData
     });
 };
 
@@ -98,6 +111,40 @@ export const submitAnswer = async (questionId, selectedOption) => {
  */
 export const getAnswerHistory = async () => {
     return await apiRequest('/question/getAnswerHistory', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 记录用户通过分享进入游戏的邀请关系
+ * @param {string} inviterOpenId 邀请者的openId
+ * @returns {Promise} 返回处理结果
+ */
+export const recordInvitation = async (inviterOpenId) => {
+    return await apiRequest('/user/recordInvitation', {
+        method: 'POST',
+        data: {
+            inviterOpenId: inviterOpenId
+        }
+    });
+};
+
+/**
+ * 获取用户的邀请统计信息
+ * @returns {Promise} 返回邀请统计数据
+ */
+export const getInvitationStats = async () => {
+    return await apiRequest('/user/getInvitationStats', {
+        method: 'GET'
+    });
+};
+
+/**
+ * 获取用户的邀请列表
+ * @returns {Promise} 返回被邀请用户列表
+ */
+export const getInvitedUsers = async () => {
+    return await apiRequest('/user/getInvitedUsers', {
         method: 'GET'
     });
 };

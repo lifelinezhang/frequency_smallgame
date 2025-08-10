@@ -1,6 +1,7 @@
 import ResourceLoader from "./js/base/ResourceLoader";
 import Director from './js/Director';
 import DataStore from './js/base/DataStore';
+import { generateShareConfig } from './js/utils/invitation.js';
 const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
 const ratio = wx.getSystemInfoSync().pixelRatio;
@@ -41,30 +42,44 @@ export default class Main {
         this.director.run(this.ctx);
         this.setShare();
     }
+    /**
+     * 设置分享功能
+     */
     setShare () {
         wx.showShareMenu({
             withShareTicket: true,
         });
-        wx.onShareAppMessage(function () {
-            // 用户点击了“转发”按钮
+        
+        wx.onShareAppMessage(() => {
+            // 生成带有邀请者信息的分享配置
+            const shareConfig = generateShareConfig({
+                title: '快来和我一起挑战频率小游戏吧！',
+                imageUrl: 'https://mtshop1.meitudata.com/5ad58b143a94621047.jpg'
+            });
+            
+            console.log('分享配置:', shareConfig);
+            
             return {
-                title: '转发标题',
-                imageUrl: 'https://mtshop1.meitudata.com/5ad58b143a94621047.jpg',
-                query: 'key1=1&key2=2',
+                ...shareConfig,
                 success: (res) => {
+                    console.log('分享成功:', res);
+                    
                     // 问题页面因为没有设置loop 绘制，分享完成后会黑屏，需要重新绘制canvas
                     if (DataStore.getInstance().currentCanvas === 'questionCanvas') {
                         DataStore.getInstance().ctx.drawImage(DataStore.getInstance().offScreenCanvas, 0, 0, screenWidth, screenHeight);
                     }
+                    
+                    // 保存分享票据
                     if (res.shareTickets) {
                         let shareTicket = res.shareTickets[0];
                         DataStore.getInstance().shareTicket = shareTicket;
+                        console.log('获得分享票据:', shareTicket);
                     }
                 },
                 fail: (res) => {
-
+                    console.error('分享失败:', res);
                 }
-            }
-        })
+            };
+        });
     }
 }

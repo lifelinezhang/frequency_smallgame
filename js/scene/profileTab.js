@@ -3,13 +3,14 @@ import DataStore from '../base/DataStore';
 import QuestionScene from './questionScene';
 import { apiRequest, userLogin, startQuiz as startQuizAPI, submitAnswer } from '../utils/api';
 import { login, createUserInfoButton } from '../utils/auth';
+import { recordInvitationAfterLogin } from '../utils/invitation';
 
 export default class ProfileTab {
     constructor(ctx) {
         this.ctx = ctx;
         this.userInfo = null;
         this.keyInfo = null;
-        this.reports = [];
+        this.myReport = null; // 存储我的最新报告
         this.adList = [];
         this.isLoggedIn = false;
         this.loginButton = null;
@@ -51,14 +52,14 @@ export default class ProfileTab {
             const userInfo = DataStore.getInstance().userInfo;
             // 获取钥匙信息
             const keyInfo = await apiRequest('/api/key/info');
-            // 获取用户报告
-            const reports = await apiRequest('/report/list');
+            // 获取我的最新报告
+            const myReport = await apiRequest('/report/my');
             // 获取广告列表
             const adList = await apiRequest('/api/ad/list');
             
             this.userInfo = userInfo;
             this.keyInfo = keyInfo.data;
-            this.reports = reports.data;
+            this.myReport = myReport.data; // 存储我的报告数据
             this.adList = adList.data;
             this.render();
         } catch (error) {
@@ -225,8 +226,11 @@ export default class ProfileTab {
                 });
             });
             
-            // 调用后端登录接口
-            const loginResult = await userLogin(loginRes.code, userInfoRes.userInfo);
+            // 检查是否有邀请者信息
+            const inviterOpenId = wx.getStorageSync('inviterOpenId');
+            
+            // 调用后端登录接口，传入邀请者信息
+            const loginResult = await userLogin(loginRes.code, userInfoRes.userInfo, inviterOpenId);
             
             if (loginResult.code === '200' || loginResult.code === 200) {
                 // 保存用户信息和token
@@ -244,6 +248,14 @@ export default class ProfileTab {
                 
                 // 清除之前的云存储数据
                 this.clearPreviousCloudData();
+                
+                // 记录邀请关系（如果有的话）
+                try {
+                    await recordInvitationAfterLogin();
+                } catch (error) {
+                    console.error('记录邀请关系失败:', error);
+                    // 不影响登录流程，只记录错误
+                }
                 
                 // 隐藏登录按钮
                 if (this.loginButton) {
@@ -368,38 +380,44 @@ export default class ProfileTab {
         this.ctx.fillText('我的报告', 40 + buttonWidth + buttonWidth/2, y + 30);
     }
 
+    /**
+     * 绘制我的报告按钮
+     * 显示一个可点击的按钮，点击后展示报告详情
+     */
     drawMyReports() {
         const startY = 320;
+        const buttonHeight = 50;
         
-        this.ctx.fillStyle = '#333333';
+        // 绘制我的报告按钮
+        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.fillRect(20, startY, window.innerWidth - 40, buttonHeight);
+        
+        // 绘制按钮边框
+        this.ctx.strokeStyle = '#45a049';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(20, startY, window.innerWidth - 40, buttonHeight);
+        
+        // 绘制按钮文字
+        this.ctx.fillStyle = '#ffffff';
         this.ctx.font = 'bold 18px Arial';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText('我的报告', 20, startY);
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('我的报告', window.innerWidth/2, startY + buttonHeight/2);
         
-        if (this.reports.length === 0) {
-            this.ctx.fillStyle = '#999999';
-            this.ctx.font = '16px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('暂无报告，快去答题吧！', window.innerWidth/2, startY + 50);
-            return;
-        }
-        
-        // 绘制报告列表
-        this.reports.slice(0, 3).forEach((report, index) => {
-            const y = startY + 40 + index * 60;
-            
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillRect(20, y, window.innerWidth - 40, 50);
-            
-            this.ctx.fillStyle = '#333333';
-            this.ctx.font = '16px Arial';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText(report.title, 30, y + 20);
-            
+        // 如果有报告数据，显示提示信息
+        if (this.myReport) {
             this.ctx.fillStyle = '#666666';
-            this.ctx.font = '12px Arial';
-            this.ctx.fillText(report.createTime, 30, y + 35);
-        });
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText('点击查看您的最新报告', window.innerWidth/2, startY + buttonHeight + 10);
+        } else {
+            this.ctx.fillStyle = '#999999';
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText('暂无报告，快去答题吧！', window.innerWidth/2, startY + buttonHeight + 10);
+        }
     }
 
     /**
@@ -503,7 +521,7 @@ export default class ProfileTab {
         }
         
         // 检查是否点击了我的报告按钮
-        if (y >= 300 && y <= 340 && x >= 20 && x <= window.innerWidth - 20) {
+        if (y >= 320 && y <= 370 && x >= 20 && x <= window.innerWidth - 20) {
             this.showMyReports();
             return true; // 表示事件已处理
         }
@@ -645,9 +663,98 @@ export default class ProfileTab {
         }
     }
 
-    showMyReports() {
-        // 显示完整的报告列表
-        console.log('显示我的报告列表');
+    /**
+     * 显示我的报告详情
+     * 当用户点击"我的报告"按钮时调用
+     */
+    async showMyReports() {
+        try {
+            if (!this.myReport) {
+                wx.showToast({
+                    title: '暂无报告数据',
+                    icon: 'none'
+                });
+                return;
+            }
+            
+            // 显示报告详情弹窗
+            const reportContent = this.formatReportContent(this.myReport);
+            
+            wx.showModal({
+                title: this.myReport.title || '我的报告',
+                content: reportContent,
+                showCancel: true,
+                cancelText: '关闭',
+                confirmText: '分享',
+                success: (res) => {
+                    if (res.confirm) {
+                        // 用户点击了分享按钮
+                        this.shareReport();
+                    }
+                }
+            });
+            
+        } catch (error) {
+            console.error('显示报告失败:', error);
+            wx.showToast({
+                title: '加载报告失败',
+                icon: 'error'
+            });
+        }
+    }
+    
+    /**
+     * 格式化报告内容用于显示
+     * @param {Object} report - 报告数据
+     * @returns {string} 格式化后的报告内容
+     */
+    formatReportContent(report) {
+        let content = '';
+        
+        if (report.content) {
+            // 如果内容太长，截取前200个字符
+            content = report.content.length > 200 
+                ? report.content.substring(0, 200) + '...'
+                : report.content;
+        }
+        
+        // 添加统计信息
+        const stats = [];
+        if (report.totalCount) {
+            stats.push(`总题数: ${report.totalCount}`);
+        }
+        if (report.completionTime) {
+            stats.push(`完成时间: ${report.completionTime}`);
+        }
+        if (report.viewCount !== undefined) {
+            stats.push(`查看次数: ${report.viewCount}`);
+        }
+        
+        if (stats.length > 0) {
+            content += '\n\n' + stats.join('\n');
+        }
+        
+        return content || '暂无详细内容';
+    }
+    
+    /**
+     * 分享报告
+     */
+    shareReport() {
+        if (!this.myReport) {
+            return;
+        }
+        
+        wx.shareAppMessage({
+            title: this.myReport.title || '我的同频度报告',
+            path: `/pages/report/detail?id=${this.myReport.id}`,
+            imageUrl: 'images/share.jpg'
+        });
+        
+        wx.showToast({
+            title: '分享成功',
+            icon: 'success'
+        });
     }
     
     /**
@@ -839,9 +946,28 @@ export default class ProfileTab {
 
     /**
      * 强制刷新数据（供外部调用）
+     * 重新加载用户信息、钥匙信息、报告数据等
      */
     async forceRefresh() {
         console.log('🔄 强制刷新个人资料tab数据');
-        await this.loadData();
+        try {
+            wx.showLoading({
+                title: '刷新中...'
+            });
+            await this.loadData();
+            wx.hideLoading();
+            wx.showToast({
+                title: '刷新成功',
+                icon: 'success',
+                duration: 1000
+            });
+        } catch (error) {
+            wx.hideLoading();
+            console.error('刷新失败:', error);
+            wx.showToast({
+                title: '刷新失败',
+                icon: 'error'
+            });
+        }
     }
 }

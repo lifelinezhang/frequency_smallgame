@@ -339,13 +339,13 @@ POST /api/key/add
 
 # 报告管理
 
-## POST 生成报告
+## GET 获取我的最新报告
 
-POST /report/generate
+GET /report/my
 
-生成报告
-生成报告
-根据答题会话生成个人报告
+获取用户最新的报告
+获取我的最新报告
+获取当前用户的最新报告
 
 > 返回示例
 
@@ -374,44 +374,6 @@ POST /report/generate
 |状态码|状态码含义|说明|数据模型|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataReportVO](#schemaresponsedatareportvo)|
-
-## GET 获取报告列表
-
-GET /report/list
-
-获取用户报告列表
-获取报告列表
-获取用户的所有报告
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": [
-    {
-      "id": 0,
-      "custId": 0,
-      "title": "",
-      "content": "",
-      "totalCount": 0,
-      "completionTime": "",
-      "isPublic": 0,
-      "viewCount": 0,
-      "createTime": ""
-    }
-  ]
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListReportVO](#schemaresponsedatalistreportvo)|
 
 ## GET 获取报告详情
 
@@ -455,115 +417,6 @@ GET /report/{reportId}
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataReportVO](#schemaresponsedatareportvo)|
 
-## PUT 设置报告公开状态
-
-PUT /report/{reportId}/public
-
-设置报告公开状态
-设置报告公开状态
-设置报告是否公开
-
-### 请求参数
-
-|名称|位置|类型|必选|说明|
-|---|---|---|---|---|
-|reportId|path|integer| 是 |报告ID|
-|isPublic|query|boolean| 是 |是否公开|
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": ""
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataString](#schemaresponsedatastring)|
-
-## GET 获取公开报告
-
-GET /report/public
-
-获取公开报告列表
-获取公开报告
-获取所有公开的报告列表
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": [
-    {
-      "id": 0,
-      "custId": 0,
-      "title": "",
-      "content": "",
-      "totalCount": 0,
-      "completionTime": "",
-      "isPublic": 0,
-      "viewCount": 0,
-      "createTime": ""
-    }
-  ]
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListReportVO](#schemaresponsedatalistreportvo)|
-
-## GET 获取热门报告
-
-GET /report/popular
-
-获取热门报告列表
-获取热门报告
-获取热门报告列表，包括需要解锁的私有报告
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": [
-    {
-      "id": 0,
-      "custId": 0,
-      "title": "",
-      "content": "",
-      "totalCount": 0,
-      "completionTime": "",
-      "isPublic": 0,
-      "viewCount": 0,
-      "createTime": ""
-    }
-  ]
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListReportVO](#schemaresponsedatalistreportvo)|
-
 # 用户管理
 
 ## POST 用户登录
@@ -579,6 +432,7 @@ POST /api/user/login
 {
   "code": "string",
   "openid": "string",
+  "inviterOpenId": "string",
   "nickname": "string",
   "avatar": "string",
   "gender": -127
@@ -1021,108 +875,12 @@ DELETE /api/frequency/remove-friend/{friendId}
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataBoolean](#schemaresponsedataboolean)|
 
-## POST 计算同频度
-
-POST /api/frequency/calculate
-
-计算同频度
-计算与指定用户的同频度
-
-> Body 请求参数
-
-```json
-{
-  "targetUserId": 0
-}
-```
-
-### 请求参数
-
-|名称|位置|类型|必选|说明|
-|---|---|---|---|---|
-|body|body|[CalculateFrequencyCommand](#schemacalculatefrequencycommand)| 否 |none|
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": {
-    "id": 0,
-    "firstCustId": 0,
-    "firstCustNickname": "",
-    "firstCustAvatar": "",
-    "secondCustId": 0,
-    "secondCustNickname": "",
-    "secondCustAvatar": "",
-    "isFriend": 0,
-    "frequencyScore": 0,
-    "frequencyDesc": "",
-    "createTime": ""
-  }
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataFrequencyRelationVO](#schemaresponsedatafrequencyrelationvo)|
-
 ## GET 获取好友列表
 
 GET /api/frequency/friends
 
 获取好友列表
 获取当前用户的好友列表
-
-> 返回示例
-
-> 200 Response
-
-```json
-{
-  "code": "",
-  "msg": "",
-  "data": [
-    {
-      "id": 0,
-      "firstCustId": 0,
-      "firstCustNickname": "",
-      "firstCustAvatar": "",
-      "secondCustId": 0,
-      "secondCustNickname": "",
-      "secondCustAvatar": "",
-      "isFriend": 0,
-      "frequencyScore": 0,
-      "frequencyDesc": "",
-      "createTime": ""
-    }
-  ]
-}
-```
-
-### 返回结果
-
-|状态码|状态码含义|说明|数据模型|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|[ResponseDataListFrequencyRelationVO](#schemaresponsedatalistfrequencyrelationvo)|
-
-## GET 获取同频度排行榜
-
-GET /api/frequency/ranking
-
-获取同频度排行榜
-获取与当前用户同频度最高的用户排行榜
-
-### 请求参数
-
-|名称|位置|类型|必选|说明|
-|---|---|---|---|---|
-|limit|query|integer| 否 |限制数量，默认10|
 
 > 返回示例
 
@@ -1809,6 +1567,7 @@ GET /api/frequency/relation/{targetUserId}
 {
   "code": "string",
   "openid": "string",
+  "inviterOpenId": "string",
   "nickname": "string",
   "avatar": "string",
   "gender": -127
@@ -1822,6 +1581,7 @@ GET /api/frequency/relation/{targetUserId}
 |---|---|---|---|---|---|
 |code|string|true|none||微信授权码|
 |openid|string|false|none||微信OpenID|
+|inviterOpenId|string|false|none||邀请者微信OpenID|
 |nickname|string|false|none||用户昵称|
 |avatar|string|false|none||用户头像URL|
 |gender|integer|false|none||性别 0-未知 1-男 2-女|

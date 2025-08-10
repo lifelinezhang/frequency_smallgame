@@ -161,15 +161,12 @@ export const getFriendsList = async () => {
 
 /**
  * 获取与指定好友的同频度报告
- * @param {string} friendOpenId 好友的openId
+ * @param {number} reportId 同频度关系ID
  * @returns {Promise} 返回同频度报告
  */
-export const getFrequencyReport = async (friendOpenId) => {
-    return await apiRequest('/report/frequency', {
-        method: 'POST',
-        data: {
-            friendOpenId: friendOpenId
-        }
+export const getFrequencyReport = async (reportId) => {
+    return await apiRequest(`/api/frequency/relation/${reportId}`, {
+        method: 'GET'
     });
 };
 

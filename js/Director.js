@@ -179,16 +179,21 @@ export default class Director {
                 console.log('第一个好友信息:', firstFriend);
                 
                 try {
-                    // 获取与第一个好友的同频度报告
-                    const frequencyResponse = await getFrequencyReport(firstFriend.openId);
-                    
-                    if (frequencyResponse && frequencyResponse.data) {
-                        console.log('获取到同频度报告:', frequencyResponse.data);
-                        wx.hideLoading();
+                    // 检查好友是否有报告
+                    if (firstFriend.hasReport && firstFriend.reportId) {
+                        // 获取与第一个好友的同频度报告
+                        const frequencyResponse = await getFrequencyReport(firstFriend.reportId);
                         
-                        // 显示同频度报告
-                        this.showFrequencyReport(frequencyResponse.data, firstFriend);
-                        return;
+                        if (frequencyResponse && frequencyResponse.data) {
+                            console.log('获取到同频度报告:', frequencyResponse.data);
+                            wx.hideLoading();
+                            
+                            // 显示同频度报告
+                            this.showFrequencyReport(frequencyResponse.data, firstFriend);
+                            return;
+                        }
+                    } else {
+                        console.log('好友没有同频度报告');
                     }
                 } catch (frequencyError) {
                     console.log('获取同频度报告失败:', frequencyError);

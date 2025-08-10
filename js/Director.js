@@ -160,7 +160,16 @@ export default class Director {
      * 从后端获取用户的完整答题记录
      */
     async handleQuizCompletion() {
-        console.log('答题完成，开始获取好友列表和同频度报告');
+        console.log('答题完成，开始处理用户答案和获取好友列表');
+        
+        // 首先保存用户答案到云存储
+        const quizSession = DataStore.getInstance().quizSession;
+        if (quizSession && quizSession.userAnswers) {
+            console.log('✅ 获取到用户答案，准备保存到云存储:', quizSession.userAnswers.length, '个答案');
+            this.updateFriendsTabWithAnswers(quizSession.userAnswers);
+        } else {
+            console.warn('⚠️ 未找到用户答案数据，无法保存到云存储');
+        }
         
         try {
             wx.showLoading({
@@ -312,7 +321,10 @@ export default class Director {
      */
     updateFriendsTabWithAnswers(userAnswers) {
         try {
-            // 获取TabScene实例（隐藏推荐tab后，好友tab索引变为0）
+            // 首先直接保存答案到云存储
+            this.saveAnswersDirectlyToCloud(userAnswers);
+            
+            // 然后尝试更新好友标签页（如果已初始化）
             if (this.tabScene) {
                 // 确保好友标签页被创建
                 const friendsTab = this.tabScene.getTab(0);
@@ -320,13 +332,57 @@ export default class Director {
                     console.log('✅ 更新好友标签页答案数据');
                     friendsTab.setUserAnswers(userAnswers);
                 } else {
-                    console.warn('好友标签页未初始化或缺少setUserAnswers方法');
+                    console.warn('好友标签页未初始化或缺少setUserAnswers方法，但答案已直接保存到云存储');
                 }
             } else {
-                console.warn('TabScene未初始化');
+                console.warn('TabScene未初始化，但答案已直接保存到云存储');
             }
         } catch (error) {
             console.error('更新好友标签页答案失败:', error);
+        }
+    }
+    
+    /**
+     * 直接保存答案到云存储
+     * @param {Array} userAnswers - 用户答案数组
+     */
+    saveAnswersDirectlyToCloud(userAnswers) {
+        if (userAnswers && userAnswers.length > 0) {
+            // 确保保存完整的答案数据结构
+            const completeAnswersData = {
+                answers: userAnswers, // 保存完整的答案对象数组
+                timestamp: Date.now(),
+                totalQuestions: userAnswers.length,
+                version: '1.0' // 添加版本号以便后续兼容性处理
+            };
+            
+            console.log('🚀 Director直接保存到云存储的答案数据:');
+            console.log('- 答案总数:', userAnswers.length);
+            console.log('- 完整数据结构:', completeAnswersData);
+            console.log('- 第一个答案示例:', userAnswers[0]);
+            console.log('- 最后一个答案示例:', userAnswers[userAnswers.length - 1]);
+            
+            // 通过开放数据域保存云存储数据
+            const openDataContext = wx.getOpenDataContext();
+            if (openDataContext) {
+                console.log('📤 Director通过开放数据域保存云存储数据');
+                openDataContext.postMessage({
+                    type: 'saveUserAnswers',
+                    data: {
+                        completeAnswers: JSON.stringify(completeAnswersData),
+                        answers: JSON.stringify(userAnswers.map(a => a.selectedOption)),
+                        timestamp: Date.now().toString(),
+                        totalQuestions: userAnswers.length.toString()
+                    }
+                });
+            } else {
+                console.warn('⚠️ Director无法获取开放数据域实例');
+            }
+        } else {
+            console.warn('Director无法保存答案到云存储：', {
+                hasAnswers: !!(userAnswers && userAnswers.length > 0),
+                answersLength: userAnswers ? userAnswers.length : 0
+            });
         }
     }
 

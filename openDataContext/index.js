@@ -957,6 +957,12 @@ wx.onMessage(data => {
     
     switch (data.type) {
         case 'similarity':
+            // 接收并设置当前用户信息
+            if (data.userInfo) {
+                myInfo = data.userInfo;
+                console.log('✅ 接收到用户信息:', myInfo);
+            }
+            
             if (data.action === 'showSimilarityRanking') {
                 console.log('📱 接收到显示排行榜消息，开始处理...');
                 getFriendsSimilarityRanking();

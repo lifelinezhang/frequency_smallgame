@@ -153,10 +153,18 @@ export default class FriendsTab {
                     }
                 });
                 
-                // 向开放数据域发送显示排行榜的消息（不再传递userAnswers，开放域会自己从云存储获取）
+                // 获取当前用户信息
+                const userInfo = wx.getStorageSync('userInfo') || DataStore.getInstance().userInfo;
+                
+                // 向开放数据域发送显示排行榜的消息，包含当前用户信息
                 this.openDataContext.postMessage({
                     type: 'similarity',
-                    action: 'showSimilarityRanking'
+                    action: 'showSimilarityRanking',
+                    userInfo: userInfo ? {
+                        openid: userInfo.openid,
+                        nickname: userInfo.nickName || userInfo.nickname,
+                        avatar: userInfo.avatarUrl || userInfo.avatar
+                    } : null
                 });
                 
                 // 延迟一下再显示开放数据域内容，确保数据已加载

@@ -51,6 +51,9 @@ export default class ShareTab {
             // 处理好友列表数据，转换为统一格式
             const rawFriendsList = friendsResponse.data || [];
             this.friendsList = this.processFriendsData(rawFriendsList);
+             console.log('好友列表数据:', {
+                friendsList: this.friendsList
+            });
             this.keyInfo = keyResponse.data || { keyCount: 0 };
             
             // 将已解锁报告ID存入Set中便于快速查找
@@ -83,13 +86,15 @@ export default class ShareTab {
         // 获取当前用户信息
         const userInfo = wx.getStorageSync('userInfo') || {};
         const currentUserId = userInfo.id;
-        
+        console.log('当前用户信息:', userInfo);
+        console.log('当前用户ID:', currentUserId);
         return rawFriendsList.map(relation => {
-            // 判断当前用户是firstCust还是secondCust，获取对方信息
-            const isFriend = relation.firstCustId === currentUserId;
-            const friendId = isFriend ? relation.secondCustId : relation.firstCustId;
-            const friendNickname = isFriend ? relation.secondCustNickname : relation.firstCustNickname;
-            const friendAvatar = isFriend ? relation.secondCustAvatar : relation.firstCustAvatar;
+             
+            // 判断当前用户是firstCust还是secondCust，获取好友（对方）信息
+            const isCurrentUserFirst = relation.firstCustId === currentUserId;
+            const friendId = isCurrentUserFirst ? relation.secondCustId : relation.firstCustId;
+            const friendNickname = isCurrentUserFirst ? relation.secondCustNickname : relation.firstCustNickname;
+            const friendAvatar = isCurrentUserFirst ? relation.secondCustAvatar : relation.firstCustAvatar;
             
             return {
                 id: friendId,
@@ -222,11 +227,8 @@ export default class ShareTab {
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(itemX, y, itemWidth, 100);
         
-        // 绘制头像占位符
-        this.ctx.fillStyle = '#f0f0f0';
-        this.ctx.fillRect(itemX + 15, y + 15, 50, 50);
-        this.ctx.strokeStyle = '#d0d0d0';
-        this.ctx.strokeRect(itemX + 15, y + 15, 50, 50);
+        // 绘制好友头像
+        this.drawFriendAvatar(friend.avatar, itemX + 15, y + 15, 50, 50);
         
         // 绘制好友昵称
         this.ctx.fillStyle = '#333333';
@@ -599,6 +601,81 @@ export default class ShareTab {
      */
     async refresh() {
         await this.loadData();
+    }
+
+    /**
+     * 绘制好友头像
+     * @param {string} avatarUrl - 头像URL
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     */
+    drawFriendAvatar(avatarUrl, x, y, width, height) {
+        if (avatarUrl && avatarUrl.trim() !== '') {
+            // 如果有头像URL，尝试加载并绘制头像
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                // 保存当前状态
+                this.ctx.save();
+                
+                // 创建圆形裁剪路径
+                this.ctx.beginPath();
+                this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+                this.ctx.clip();
+                
+                // 绘制头像
+                this.ctx.drawImage(img, x, y, width, height);
+                
+                // 恢复状态
+                this.ctx.restore();
+                
+                // 绘制圆形边框
+                this.ctx.strokeStyle = '#d0d0d0';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            };
+            img.onerror = () => {
+                // 头像加载失败时绘制默认头像
+                this.drawDefaultAvatar(x, y, width, height);
+            };
+            img.src = avatarUrl;
+        } else {
+            // 没有头像URL时绘制默认头像
+            this.drawDefaultAvatar(x, y, width, height);
+        }
+    }
+
+    /**
+     * 绘制默认头像
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     */
+    drawDefaultAvatar(x, y, width, height) {
+        // 绘制圆形背景
+        this.ctx.fillStyle = '#f0f0f0';
+        this.ctx.beginPath();
+        this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // 绘制用户图标
+        this.ctx.fillStyle = '#999999';
+        this.ctx.font = `${width * 0.4}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('👤', x + width/2, y + height/2);
+        
+        // 绘制圆形边框
+        this.ctx.strokeStyle = '#d0d0d0';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+        this.ctx.stroke();
     }
 
     /**

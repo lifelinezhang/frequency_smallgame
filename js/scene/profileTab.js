@@ -323,9 +323,8 @@ export default class ProfileTab {
         this.ctx.fillStyle = '#f0f0f0';
         this.ctx.fillRect(20, 70, window.innerWidth - 40, 80);
         
-        // 绘制头像占位符
-        this.ctx.fillStyle = '#cccccc';
-        this.ctx.fillRect(40, 85, 50, 50);
+        // 绘制用户真实头像
+        this.drawUserAvatar(this.userInfo.avatarUrl, 40, 85, 50, 50);
         
         // 绘制用户信息
         this.ctx.fillStyle = '#333333';
@@ -336,6 +335,95 @@ export default class ProfileTab {
         this.ctx.fillStyle = '#666666';
         this.ctx.font = '14px Arial';
         this.ctx.fillText('已登录', 110, 125);
+        
+        // 绘制更新报告按钮
+        const buttonWidth = 80;
+        const buttonHeight = 30;
+        const buttonX = window.innerWidth - 40 - buttonWidth;
+        const buttonY = 95;
+        
+        this.ctx.fillStyle = '#007AFF';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('更新报告', buttonX + buttonWidth/2, buttonY + 20);
+    }
+
+    /**
+     * 绘制用户头像
+     * @param {string} avatarUrl - 头像URL
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     */
+    drawUserAvatar(avatarUrl, x, y, width, height) {
+        if (avatarUrl && avatarUrl.trim() !== '') {
+            // 如果有头像URL，尝试加载并绘制头像
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                // 保存当前状态
+                this.ctx.save();
+                
+                // 创建圆形裁剪路径
+                this.ctx.beginPath();
+                this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+                this.ctx.clip();
+                
+                // 绘制头像
+                this.ctx.drawImage(img, x, y, width, height);
+                
+                // 恢复状态
+                this.ctx.restore();
+                
+                // 绘制圆形边框
+                this.ctx.strokeStyle = '#d0d0d0';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            };
+            img.onerror = () => {
+                // 头像加载失败时绘制默认头像
+                this.drawDefaultAvatar(x, y, width, height);
+            };
+            img.src = avatarUrl;
+        } else {
+            // 没有头像URL时绘制默认头像
+            this.drawDefaultAvatar(x, y, width, height);
+        }
+    }
+
+    /**
+     * 绘制默认头像
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     */
+    drawDefaultAvatar(x, y, width, height) {
+        // 绘制圆形背景
+        this.ctx.fillStyle = '#f0f0f0';
+        this.ctx.beginPath();
+        this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // 绘制用户图标
+        this.ctx.fillStyle = '#999999';
+        this.ctx.font = `${width * 0.4}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('👤', x + width/2, y + height/2);
+        
+        // 绘制圆形边框
+        this.ctx.strokeStyle = '#d0d0d0';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(x + width/2, y + height/2, width/2, 0, 2 * Math.PI);
+        this.ctx.stroke();
     }
 
     drawKeyInfo() {
@@ -505,6 +593,19 @@ export default class ProfileTab {
                     }
                 }
             });
+            return true; // 表示事件已处理
+        }
+        
+        // 检查是否点击了更新报告按钮
+        const updateButtonWidth = 80;
+        const updateButtonHeight = 30;
+        const updateButtonX = window.innerWidth - 40 - updateButtonWidth;
+        const updateButtonY = 95;
+        
+        if (x >= updateButtonX && x <= updateButtonX + updateButtonWidth && 
+            y >= updateButtonY && y <= updateButtonY + updateButtonHeight) {
+            console.log('点击了更新报告按钮，跳转到答题页面');
+            this.startQuiz();
             return true; // 表示事件已处理
         }
         

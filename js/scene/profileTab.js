@@ -15,6 +15,10 @@ export default class ProfileTab {
         this.isLoggedIn = false;
         this.loginButton = null;
         
+        // 报告tab相关属性
+        this.currentReportTab = 0; // 当前选中的报告tab索引
+        this.reportTabs = []; // 动态从报告数据中获取tab标签
+        
         // 下拉刷新相关属性
         this.pullRefresh = {
             startY: 0,
@@ -61,6 +65,10 @@ export default class ProfileTab {
             this.keyInfo = keyInfo.data;
             this.myReport = myReport.data; // 存储我的报告数据
             this.adList = adList.data;
+            
+            // 解析报告数据，更新tab标签
+            this.parseReportData();
+            
             this.render();
         } catch (error) {
             console.error('加载用户数据失败:', error);
@@ -87,9 +95,6 @@ export default class ProfileTab {
             
             // 绘制钥匙信息
             this.drawKeyInfo();
-            
-            // 绘制功能按钮
-            this.drawActionButtons();
             
             // 绘制我的报告
             this.drawMyReports();
@@ -472,42 +477,237 @@ export default class ProfileTab {
      * 绘制我的报告按钮
      * 显示一个可点击的按钮，点击后展示报告详情
      */
+    /**
+     * 绘制我的报告区域
+     */
     drawMyReports() {
-        const startY = 320;
-        const buttonHeight = 50;
+        const startY = 240;
+        const reportHeight = 200;
+        const margin = 20;
         
-        // 绘制我的报告按钮
-        this.ctx.fillStyle = '#4CAF50';
-        this.ctx.fillRect(20, startY, window.innerWidth - 40, buttonHeight);
+        // 绘制报告容器背景
+        this.ctx.fillStyle = '#f8f9fa';
+        this.ctx.fillRect(margin, startY, window.innerWidth - 2 * margin, reportHeight);
         
-        // 绘制按钮边框
-        this.ctx.strokeStyle = '#45a049';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(20, startY, window.innerWidth - 40, buttonHeight);
+        // 绘制容器边框
+        this.ctx.strokeStyle = '#e9ecef';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(margin, startY, window.innerWidth - 2 * margin, reportHeight);
         
-        // 绘制按钮文字
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 18px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText('我的报告', window.innerWidth/2, startY + buttonHeight/2);
+        // 绘制标题
+        this.ctx.fillStyle = '#333333';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('我的报告', margin + 15, startY + 15);
         
-        // 如果有报告数据，显示提示信息
-        if (this.myReport) {
-            this.ctx.fillStyle = '#666666';
-            this.ctx.font = '14px Arial';
+        // 确保报告数据已解析
+        if (this.reportTabs.length === 0) {
+            this.parseReportData();
+        }
+        
+        // 绘制tab标签
+        const tabY = startY + 45;
+        const tabHeight = 25;
+        const tabWidth = 60;
+        const tabSpacing = 5;
+        
+        // 存储tab点击区域用于点击检测
+        this.reportTabBounds = [];
+        
+        // 只有当有tab数据时才绘制
+        if (this.reportTabs.length > 0) {
+            this.reportTabs.forEach((tab, index) => {
+            const tabX = margin + 15 + index * (tabWidth + tabSpacing);
+            
+            // 存储tab点击区域
+            this.reportTabBounds.push({
+                x: tabX,
+                y: tabY,
+                width: tabWidth,
+                height: tabHeight,
+                index: index
+            });
+            
+            // 绘制tab背景
+            if (index === this.currentReportTab) {
+                this.ctx.fillStyle = '#007bff';
+            } else {
+                this.ctx.fillStyle = '#e9ecef';
+            }
+            this.ctx.fillRect(tabX, tabY, tabWidth, tabHeight);
+            
+            // 绘制tab文字
+            this.ctx.fillStyle = index === this.currentReportTab ? '#ffffff' : '#666666';
+            this.ctx.font = '12px Arial';
             this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(tab, tabX + tabWidth/2, tabY + tabHeight/2);
+            });
+        }
+        
+        // 绘制报告内容预览
+        const contentY = tabY + tabHeight + 15;
+        const contentHeight = 80;
+        
+        if (this.myReport && this.myReport.content) {
+            // 显示报告内容的前几行
+            const previewText = this.getReportPreview();
+            this.ctx.fillStyle = '#333333';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'top';
-            this.ctx.fillText('点击查看您的最新报告', window.innerWidth/2, startY + buttonHeight + 10);
+            
+            // 分行显示文本
+            const lines = this.wrapText(previewText, window.innerWidth - 2 * margin - 30, 12);
+            lines.slice(0, 5).forEach((line, index) => {
+                this.ctx.fillText(line, margin + 15, contentY + index * 16);
+            });
         } else {
             this.ctx.fillStyle = '#999999';
             this.ctx.font = '14px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'top';
-            this.ctx.fillText('暂无报告，快去答题吧！', window.innerWidth/2, startY + buttonHeight + 10);
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('暂无报告，快去答题吧！', window.innerWidth/2, contentY + contentHeight/2);
         }
+        
+        // 绘制"查看更多"按钮
+        const moreButtonWidth = 80;
+        const moreButtonHeight = 25;
+        const moreButtonX = window.innerWidth - margin - 15 - moreButtonWidth;
+        const moreButtonY = startY + reportHeight - 15 - moreButtonHeight;
+        
+        this.ctx.fillStyle = '#007bff';
+        this.ctx.fillRect(moreButtonX, moreButtonY, moreButtonWidth, moreButtonHeight);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('查看更多', moreButtonX + moreButtonWidth/2, moreButtonY + moreButtonHeight/2);
+        
+        // 存储按钮位置用于点击检测
+        this.moreButtonBounds = {
+            x: moreButtonX,
+            y: moreButtonY,
+            width: moreButtonWidth,
+            height: moreButtonHeight
+        };
     }
 
+    /**
+     * 获取报告内容预览
+     * @returns {string} 预览文本
+     */
+    /**
+     * 获取报告预览内容
+     * @returns {string} 报告预览文本
+     */
+    /**
+     * 解析报告数据并更新tab标签
+     */
+    parseReportData() {
+        if (!this.myReport || !this.myReport.content) {
+            this.reportTabs = [];
+            return;
+        }
+        
+        try {
+            // 尝试解析JSON格式的报告数据
+            const reportData = typeof this.myReport.content === 'string' 
+                ? JSON.parse(this.myReport.content) 
+                : this.myReport.content;
+            
+            // 从JSON数据中提取tab标签
+            this.reportTabs = Object.keys(reportData);
+            
+            // 确保当前选中的tab索引有效
+            if (this.currentReportTab >= this.reportTabs.length) {
+                this.currentReportTab = 0;
+            }
+        } catch (error) {
+            console.error('解析报告数据失败:', error);
+            // 如果解析失败，使用默认的tab标签
+            this.reportTabs = ['报告内容'];
+            this.currentReportTab = 0;
+        }
+    }
+    
+    /**
+     * 获取报告预览内容
+     * @returns {string} 预览文本
+     */
+    getReportPreview() {
+        if (!this.myReport || !this.myReport.content) {
+            return '';
+        }
+        
+        // 确保报告数据已解析
+        if (this.reportTabs.length === 0) {
+            this.parseReportData();
+        }
+        
+        if (this.reportTabs.length === 0) {
+            return '';
+        }
+        
+        try {
+            // 解析JSON格式的报告数据
+            const reportData = typeof this.myReport.content === 'string' 
+                ? JSON.parse(this.myReport.content) 
+                : this.myReport.content;
+            
+            // 获取当前选中tab的内容
+            const currentTabName = this.reportTabs[this.currentReportTab];
+            const tabContent = reportData[currentTabName] || '';
+            
+            // 截取预览长度
+            return tabContent.length > 200 ? tabContent.substring(0, 200) + '...' : tabContent;
+        } catch (error) {
+            console.error('获取报告预览失败:', error);
+            // 如果解析失败，回退到原始内容
+            const content = this.myReport.content;
+            return content.length > 200 ? content.substring(0, 200) + '...' : content;
+        }
+    }
+    
+
+    
+    /**
+     * 文本换行处理
+     * @param {string} text - 要换行的文本
+     * @param {number} maxWidth - 最大宽度
+     * @param {number} fontSize - 字体大小
+     * @returns {Array} 换行后的文本数组
+     */
+    wrapText(text, maxWidth, fontSize) {
+        const words = text.split('');
+        const lines = [];
+        let currentLine = '';
+        
+        // 设置字体以测量文本宽度
+        this.ctx.font = `${fontSize}px Arial`;
+        
+        for (let i = 0; i < words.length; i++) {
+            const testLine = currentLine + words[i];
+            const metrics = this.ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            
+            if (testWidth > maxWidth && currentLine !== '') {
+                lines.push(currentLine);
+                currentLine = words[i];
+            } else {
+                currentLine = testLine;
+            }
+        }
+        
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+        
+        return lines;
+    }
+    
     /**
      * 处理触摸开始事件
      * @param {number} x - 触摸点 x 坐标
@@ -615,14 +815,23 @@ export default class ProfileTab {
             return true; // 表示事件已处理
         }
         
-        // 检查是否点击了开始答题按钮
-        if (y >= 240 && y <= 280 && x >= 20 && x <= window.innerWidth - 20) {
-            this.startQuiz();
-            return true; // 表示事件已处理
+        // 检查是否点击了报告tab
+        if (this.reportTabBounds) {
+            for (let tabBound of this.reportTabBounds) {
+                if (x >= tabBound.x && x <= tabBound.x + tabBound.width &&
+                    y >= tabBound.y && y <= tabBound.y + tabBound.height) {
+                    console.log('点击了报告tab:', this.reportTabs[tabBound.index]);
+                    this.currentReportTab = tabBound.index;
+                    this.render(); // 重新渲染以更新tab显示
+                    return true; // 表示事件已处理
+                }
+            }
         }
         
-        // 检查是否点击了我的报告按钮
-        if (y >= 320 && y <= 370 && x >= 20 && x <= window.innerWidth - 20) {
+        // 检查是否点击了"查看更多"按钮
+        if (this.moreButtonBounds && 
+            x >= this.moreButtonBounds.x && x <= this.moreButtonBounds.x + this.moreButtonBounds.width &&
+            y >= this.moreButtonBounds.y && y <= this.moreButtonBounds.y + this.moreButtonBounds.height) {
             this.showMyReports();
             return true; // 表示事件已处理
         }
@@ -768,22 +977,23 @@ export default class ProfileTab {
      * 显示我的报告详情
      * 当用户点击"我的报告"按钮时调用
      */
+    /**
+     * 显示完整的报告内容
+     */
+    /**
+     * 显示完整报告内容
+     */
+    /**
+     * 显示完整的报告内容
+     */
     async showMyReports() {
         try {
-            if (!this.myReport) {
-                wx.showToast({
-                    title: '暂无报告数据',
-                    icon: 'none'
-                });
-                return;
-            }
-            
-            // 显示报告详情弹窗
-            const reportContent = this.formatReportContent(this.myReport);
+            // 获取完整的报告内容
+            const fullReportContent = this.getFullReportContent();
             
             wx.showModal({
-                title: this.myReport.title || '我的报告',
-                content: reportContent,
+                title: '我的完整报告',
+                content: fullReportContent,
                 showCancel: true,
                 cancelText: '关闭',
                 confirmText: '分享',
@@ -803,6 +1013,59 @@ export default class ProfileTab {
             });
         }
     }
+    
+    /**
+     * 获取完整的报告内容
+     * @returns {string} 完整的报告内容
+     */
+    /**
+     * 获取完整报告内容
+     * @returns {string} 完整报告内容
+     */
+    /**
+     * 获取完整的报告内容（所有tab的内容）
+     * @returns {string} 完整的报告内容
+     */
+    getFullReportContent() {
+        if (!this.myReport || !this.myReport.content) {
+            return '暂无报告内容';
+        }
+        
+        // 确保报告数据已解析
+        if (this.reportTabs.length === 0) {
+            this.parseReportData();
+        }
+        
+        if (this.reportTabs.length === 0) {
+            return '暂无报告内容';
+        }
+        
+        try {
+            // 解析JSON格式的报告数据
+            const reportData = typeof this.myReport.content === 'string' 
+                ? JSON.parse(this.myReport.content) 
+                : this.myReport.content;
+            
+            // 获取所有tab的完整内容
+            let fullContent = '';
+            for (let i = 0; i < this.reportTabs.length; i++) {
+                const tabName = this.reportTabs[i];
+                const tabContent = reportData[tabName] || '';
+                
+                if (tabContent) {
+                    fullContent += `【${tabName}】\n\n${tabContent}\n\n`;
+                }
+            }
+            
+            return fullContent || '暂无报告内容';
+        } catch (error) {
+            console.error('获取完整报告失败:', error);
+            // 如果解析失败，回退到原始内容
+            return this.myReport.content || '暂无报告内容';
+        }
+    }
+    
+
     
     /**
      * 格式化报告内容用于显示

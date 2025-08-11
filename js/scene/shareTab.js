@@ -125,11 +125,12 @@ export default class ShareTab {
      * 渲染界面
      */
     render() {
-        // 清除内容区域
+        // 清除内容区域，保留底部tab栏
         this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
         
-        // 绘制背景
-        const background = new Background(this.ctx);
+        // 绘制背景（只绘制内容区域，不覆盖底部tab栏）
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight - 100);
         
         if (this.isLoading) {
             this.drawLoadingUI();

@@ -18,6 +18,17 @@ export default class ProfileTab {
         // 报告tab相关属性
         this.currentReportTab = 0; // 当前选中的报告tab索引
         this.reportTabs = []; // 动态从报告数据中获取tab标签
+        this.reportTabBounds = []; // 存储每个tab的点击区域
+        this.moreButtonBounds = null; // 存储"查看更多"按钮的点击区域
+        
+        // 底部链接相关
+        this.footerLinks = [
+            { name: '用户协议', action: 'userAgreement' },
+            { name: '隐私政策', action: 'privacyPolicy' },
+            { name: '联系我们', action: 'contactUs' },
+            { name: '关于我们', action: 'aboutUs' }
+        ];
+        this.footerLinkBounds = []; // 存储底部链接的点击区域
         
         // 下拉刷新相关属性
         this.pullRefresh = {
@@ -99,6 +110,9 @@ export default class ProfileTab {
             // 绘制我的报告
             this.drawMyReports();
         }
+        
+        // 绘制底部链接
+        this.drawFooterLinks();
     }
     
     /**
@@ -836,6 +850,18 @@ export default class ProfileTab {
             return true; // 表示事件已处理
         }
         
+        // 检查是否点击了底部链接
+        if (this.footerLinkBounds) {
+            for (let linkBound of this.footerLinkBounds) {
+                if (x >= linkBound.x && x <= linkBound.x + linkBound.width &&
+                    y >= linkBound.y && y <= linkBound.y + linkBound.height) {
+                    console.log('点击了底部链接:', linkBound.action);
+                    this.handleFooterLinkClick(linkBound.action);
+                    return true; // 表示事件已处理
+                }
+            }
+        }
+        
         // 没有处理事件，返回false让TabScene处理tab切换
         return false;
     }
@@ -1332,6 +1358,104 @@ export default class ProfileTab {
                 title: '刷新失败',
                 icon: 'error'
             });
+        }
+    }
+
+    /**
+      * 绘制底部链接
+      */
+     drawFooterLinks() {
+         const screenWidth = window.innerWidth;
+         const screenHeight = window.innerHeight;
+         const tabHeight = 100; // 底部tab栏高度
+         const linkHeight = 35;
+         const linkSpacing = 8;
+         const totalLinksHeight = this.footerLinks.length * linkHeight + (this.footerLinks.length - 1) * linkSpacing;
+         const startY = screenHeight - tabHeight - totalLinksHeight - 30;
+         
+         // 清空之前的点击区域
+         this.footerLinkBounds = [];
+         
+         // 绘制每个链接
+         this.footerLinks.forEach((link, index) => {
+             const y = startY + index * (linkHeight + linkSpacing);
+             const x = 15;
+             const width = screenWidth - 30;
+             
+             // 存储点击区域
+             this.footerLinkBounds.push({
+                 x: x,
+                 y: y,
+                 width: width,
+                 height: linkHeight,
+                 action: link.action
+             });
+             
+             // 绘制链接背景（轻微的背景色）
+             this.ctx.fillStyle = '#ffffff';
+             this.ctx.fillRect(x, y, width, linkHeight);
+             
+             // 绘制分隔线（除了最后一个）
+             if (index < this.footerLinks.length - 1) {
+                 this.ctx.strokeStyle = '#e9ecef';
+                 this.ctx.lineWidth = 0.5;
+                 this.ctx.beginPath();
+                 this.ctx.moveTo(x + 10, y + linkHeight);
+                 this.ctx.lineTo(x + width - 10, y + linkHeight);
+                 this.ctx.stroke();
+             }
+             
+             // 绘制链接文字
+             this.ctx.fillStyle = '#666666';
+             this.ctx.font = '14px Arial';
+             this.ctx.textAlign = 'left';
+             this.ctx.textBaseline = 'middle';
+             this.ctx.fillText(link.name, x + 15, y + linkHeight/2);
+             
+             // 绘制箭头
+             this.ctx.fillStyle = '#cccccc';
+             this.ctx.font = '16px Arial';
+             this.ctx.textAlign = 'right';
+             this.ctx.fillText('›', x + width - 15, y + linkHeight/2);
+         });
+     }
+
+    /**
+     * 处理底部链接点击
+     * @param {string} action - 链接动作
+     */
+    handleFooterLinkClick(action) {
+        switch (action) {
+            case 'userAgreement':
+                wx.showModal({
+                    title: '用户协议',
+                    content: '这里是用户协议的内容...',
+                    showCancel: false
+                });
+                break;
+            case 'privacyPolicy':
+                wx.showModal({
+                    title: '隐私政策',
+                    content: '这里是隐私政策的内容...',
+                    showCancel: false
+                });
+                break;
+            case 'contactUs':
+                wx.showModal({
+                    title: '联系我们',
+                    content: '客服微信：xxx\n客服电话：xxx-xxxx-xxxx\n邮箱：support@example.com',
+                    showCancel: false
+                });
+                break;
+            case 'aboutUs':
+                wx.showModal({
+                    title: '关于我们',
+                    content: '这里是关于我们的介绍...',
+                    showCancel: false
+                });
+                break;
+            default:
+                console.log('未知的链接动作:', action);
         }
     }
 }

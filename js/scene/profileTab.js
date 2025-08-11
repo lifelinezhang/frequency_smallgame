@@ -324,50 +324,90 @@ export default class ProfileTab {
     drawUserInfo() {
         if (!this.userInfo) return;
         
-        // 绘制标题和退出按钮
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = 'bold 24px Arial';
+        // 绘制头部渐变背景
+        const headerGradient = this.ctx.createLinearGradient(0, 0, 0, 160);
+        headerGradient.addColorStop(0, '#667eea');
+        headerGradient.addColorStop(1, '#764ba2');
+        this.ctx.fillStyle = headerGradient;
+        this.ctx.fillRect(0, 0, window.innerWidth, 160);
+        
+        // 绘制标题
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 26px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('我的', window.innerWidth/2, 50);
+        this.ctx.fillText('我的', window.innerWidth/2, 35);
         
         // 绘制退出登录按钮
-        this.ctx.fillStyle = '#ff4444';
-        this.ctx.fillRect(window.innerWidth - 80, 20, 60, 30);
+        const logoutBtnWidth = 70;
+        const logoutBtnHeight = 32;
+        const logoutBtnX = window.innerWidth - logoutBtnWidth - 15;
+        const logoutBtnY = 15;
+        
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight);
+        
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight);
+        
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('退出', window.innerWidth - 50, 38);
+        this.ctx.fillText('退出', logoutBtnX + logoutBtnWidth/2, logoutBtnY + 21);
         
-        // 绘制用户头像区域
-        this.ctx.fillStyle = '#f0f0f0';
-        this.ctx.fillRect(20, 70, window.innerWidth - 40, 80);
+        // 绘制用户信息卡片
+        const cardX = 20;
+        const cardY = 60;
+        const cardWidth = window.innerWidth - 40;
+        const cardHeight = 85;
         
-        // 绘制用户真实头像
-        this.drawUserAvatar(this.userInfo.avatarUrl, 40, 85, 50, 50);
+        // 卡片阴影
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(cardX + 2, cardY + 2, cardWidth, cardHeight);
+        
+        // 卡片背景
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+        
+        // 绘制用户头像
+        this.drawUserAvatar(this.userInfo.avatarUrl, cardX + 20, cardY + 15, 55, 55);
         
         // 绘制用户信息
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = '18px Arial';
+        this.ctx.fillStyle = '#2c3e50';
+        this.ctx.font = 'bold 20px Arial';
         this.ctx.textAlign = 'left';
-        this.ctx.fillText(this.userInfo.nickName || '用户', 110, 105);
+        this.ctx.fillText(this.userInfo.nickName || '用户', cardX + 90, cardY + 35);
         
-        this.ctx.fillStyle = '#666666';
+        // 在线状态指示器
+        this.ctx.fillStyle = '#28a745';
+        this.ctx.beginPath();
+        this.ctx.arc(cardX + 90, cardY + 50, 4, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = '#7f8c8d';
         this.ctx.font = '14px Arial';
-        this.ctx.fillText('已登录', 110, 125);
+        this.ctx.fillText('在线', cardX + 105, cardY + 55);
         
         // 绘制更新报告按钮
-        const buttonWidth = 80;
-        const buttonHeight = 30;
-        const buttonX = window.innerWidth - 40 - buttonWidth;
-        const buttonY = 95;
+        const buttonWidth = 90;
+        const buttonHeight = 35;
+        const buttonX = cardX + cardWidth - buttonWidth - 15;
+        const buttonY = cardY + 25;
         
-        this.ctx.fillStyle = '#007AFF';
+        const btnGradient = this.ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight);
+        btnGradient.addColorStop(0, '#4facfe');
+        btnGradient.addColorStop(1, '#00f2fe');
+        this.ctx.fillStyle = btnGradient;
         this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
         
+        this.ctx.strokeStyle = 'rgba(79, 172, 254, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '14px Arial';
+        this.ctx.font = 'bold 14px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('更新报告', buttonX + buttonWidth/2, buttonY + 20);
+        this.ctx.fillText('更新报告', buttonX + buttonWidth/2, buttonY + buttonHeight/2 + 5);
     }
 
     /**
@@ -446,45 +486,149 @@ export default class ProfileTab {
     }
 
     drawKeyInfo() {
-        const y = 160;
+        const y = 175;
+        const cardWidth = window.innerWidth - 40;
+        const cardHeight = 70;
+        const cardX = 20;
         
-        // 钥匙背景
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.fillRect(20, y, window.innerWidth - 40, 60);
+        // 卡片阴影
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(cardX + 2, y + 2, cardWidth, cardHeight);
         
-        // 钥匙图标和数量
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 24px Arial';
+        // 钥匙卡片渐变背景
+        const keyGradient = this.ctx.createLinearGradient(cardX, y, cardX, y + cardHeight);
+        keyGradient.addColorStop(0, '#ffecd2');
+        keyGradient.addColorStop(1, '#fcb69f');
+        this.ctx.fillStyle = keyGradient;
+        this.ctx.fillRect(cardX, y, cardWidth, cardHeight);
+        
+        // 钥匙图标背景圆圈
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(cardX + 35, y + 35, 20, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // 钥匙图标
+        this.ctx.fillStyle = '#ff6b35';
+        this.ctx.font = '24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('🔑', cardX + 35, y + 42);
+        
+        // 钥匙数量标题
+        this.ctx.fillStyle = '#8b4513';
+        this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'left';
-        this.ctx.fillText('🔑', 40, y + 35);
-        this.ctx.fillText(`钥匙数量: ${this.keyInfo?.keyCount || 0}`, 80, y + 35);
+        this.ctx.fillText('我的钥匙', cardX + 65, y + 25);
+        
+        // 钥匙数量
+        this.ctx.fillStyle = '#2c3e50';
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.fillText(`${this.keyInfo?.keyCount || 0}`, cardX + 65, y + 50);
         
         // 观看广告按钮
-        this.ctx.fillStyle = '#007AFF';
-        this.ctx.fillRect(window.innerWidth - 120, y + 10, 80, 40);
+        const adBtnWidth = 90;
+        const adBtnHeight = 35;
+        const adBtnX = cardX + cardWidth - adBtnWidth - 15;
+        const adBtnY = y + 18;
+        
+        const adBtnGradient = this.ctx.createLinearGradient(adBtnX, adBtnY, adBtnX, adBtnY + adBtnHeight);
+        adBtnGradient.addColorStop(0, '#ff9a9e');
+        adBtnGradient.addColorStop(1, '#fecfef');
+        this.ctx.fillStyle = adBtnGradient;
+        this.ctx.fillRect(adBtnX, adBtnY, adBtnWidth, adBtnHeight);
+        
+        this.ctx.strokeStyle = 'rgba(255, 154, 158, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(adBtnX, adBtnY, adBtnWidth, adBtnHeight);
+        
         this.ctx.fillStyle = '#ffffff';
         this.ctx.textAlign = 'center';
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText('看广告', window.innerWidth - 80, y + 33);
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.fillText('📺 看广告', adBtnX + adBtnWidth/2, adBtnY + adBtnHeight/2 + 5);
     }
 
     drawActionButtons() {
-        const y = 240;
-        const buttonWidth = (window.innerWidth - 60) / 2;
+        const y = 260;
+        const buttonHeight = 50;
+        const buttonSpacing = 15;
+        const totalButtonWidth = window.innerWidth - 60;
+        const buttonWidth = (totalButtonWidth - buttonSpacing) / 2;
         
         // 开始答题按钮
-        this.ctx.fillStyle = '#28a745';
-        this.ctx.fillRect(20, y, buttonWidth, 50);
+        const startButtonX = 30;
+        
+        // 按钮阴影
+        this.ctx.fillStyle = 'rgba(40, 167, 69, 0.3)';
+        this.ctx.fillRect(startButtonX + 2, y + 2, buttonWidth, buttonHeight);
+        
+        // 按钮渐变背景
+        const startGradient = this.ctx.createLinearGradient(startButtonX, y, startButtonX, y + buttonHeight);
+        startGradient.addColorStop(0, '#48c78e');
+        startGradient.addColorStop(0.5, '#28a745');
+        startGradient.addColorStop(1, '#20c997');
+        this.ctx.fillStyle = startGradient;
+        this.ctx.fillRect(startButtonX, y, buttonWidth, buttonHeight);
+        
+        // 按钮高光
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(startButtonX, y, buttonWidth, buttonHeight/3);
+        
+        // 按钮图标和文字
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 18px Arial';
+        this.ctx.font = '18px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('开始答题', 20 + buttonWidth/2, y + 30);
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('🚀', startButtonX + buttonWidth/2 - 20, y + buttonHeight/2);
+        
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.fillText('开始答题', startButtonX + buttonWidth/2 + 10, y + buttonHeight/2);
         
         // 我的报告按钮
-        this.ctx.fillStyle = '#6c757d';
-        this.ctx.fillRect(40 + buttonWidth, y, buttonWidth, 50);
+        const reportButtonX = startButtonX + buttonWidth + buttonSpacing;
+        
+        // 按钮阴影
+        this.ctx.fillStyle = 'rgba(108, 117, 125, 0.3)';
+        this.ctx.fillRect(reportButtonX + 2, y + 2, buttonWidth, buttonHeight);
+        
+        // 按钮渐变背景
+        const reportGradient = this.ctx.createLinearGradient(reportButtonX, y, reportButtonX, y + buttonHeight);
+        reportGradient.addColorStop(0, '#8e9aaf');
+        reportGradient.addColorStop(0.5, '#6c757d');
+        reportGradient.addColorStop(1, '#5a6268');
+        this.ctx.fillStyle = reportGradient;
+        this.ctx.fillRect(reportButtonX, y, buttonWidth, buttonHeight);
+        
+        // 按钮高光
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(reportButtonX, y, buttonWidth, buttonHeight/3);
+        
+        // 按钮图标和文字
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillText('我的报告', 40 + buttonWidth + buttonWidth/2, y + 30);
+        this.ctx.font = '18px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('📋', reportButtonX + buttonWidth/2 - 20, y + buttonHeight/2);
+        
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.fillText('我的报告', reportButtonX + buttonWidth/2 + 10, y + buttonHeight/2);
+        
+        // 存储按钮点击区域
+        this.actionButtonBounds = [
+            {
+                x: startButtonX,
+                y: y,
+                width: buttonWidth,
+                height: buttonHeight,
+                action: 'startTest'
+            },
+            {
+                x: reportButtonX,
+                y: y,
+                width: buttonWidth,
+                height: buttonHeight,
+                action: 'myReports'
+            }
+        ];
     }
 
     /**
@@ -495,25 +639,35 @@ export default class ProfileTab {
      * 绘制我的报告区域
      */
     drawMyReports() {
-        const startY = 240;
-        const reportHeight = 200;
+        const startY = 330;
+        const reportHeight = 220;
         const margin = 20;
         
+        // 绘制报告容器阴影
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(margin + 2, startY + 2, window.innerWidth - 2 * margin, reportHeight);
+        
         // 绘制报告容器背景
-        this.ctx.fillStyle = '#f8f9fa';
+        this.ctx.fillStyle = '#ffffff';
         this.ctx.fillRect(margin, startY, window.innerWidth - 2 * margin, reportHeight);
         
-        // 绘制容器边框
-        this.ctx.strokeStyle = '#e9ecef';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(margin, startY, window.innerWidth - 2 * margin, reportHeight);
+        // 绘制顶部装饰条
+        const decorGradient = this.ctx.createLinearGradient(margin, startY, margin + window.innerWidth - 2 * margin, startY);
+        decorGradient.addColorStop(0, '#667eea');
+        decorGradient.addColorStop(1, '#764ba2');
+        this.ctx.fillStyle = decorGradient;
+        this.ctx.fillRect(margin, startY, window.innerWidth - 2 * margin, 4);
+        
+        // 绘制标题区域背景
+        this.ctx.fillStyle = '#f8f9fa';
+        this.ctx.fillRect(margin, startY + 4, window.innerWidth - 2 * margin, 40);
         
         // 绘制标题
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = 'bold 16px Arial';
+        this.ctx.fillStyle = '#2c3e50';
+        this.ctx.font = 'bold 18px Arial';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
-        this.ctx.fillText('我的报告', margin + 15, startY + 15);
+        this.ctx.fillText('📊 我的报告', margin + 15, startY + 20);
         
         // 确保报告数据已解析
         if (this.reportTabs.length === 0) {
@@ -521,10 +675,10 @@ export default class ProfileTab {
         }
         
         // 绘制tab标签
-        const tabY = startY + 45;
-        const tabHeight = 25;
-        const tabWidth = 60;
-        const tabSpacing = 5;
+        const tabY = startY + 55;
+        const tabHeight = 30;
+        const tabWidth = 70;
+        const tabSpacing = 8;
         
         // 存储tab点击区域用于点击检测
         this.reportTabBounds = [];
@@ -545,15 +699,23 @@ export default class ProfileTab {
             
             // 绘制tab背景
             if (index === this.currentReportTab) {
-                this.ctx.fillStyle = '#007bff';
+                const activeTabGradient = this.ctx.createLinearGradient(tabX, tabY, tabX, tabY + tabHeight);
+                activeTabGradient.addColorStop(0, '#667eea');
+                activeTabGradient.addColorStop(1, '#764ba2');
+                this.ctx.fillStyle = activeTabGradient;
             } else {
                 this.ctx.fillStyle = '#e9ecef';
             }
             this.ctx.fillRect(tabX, tabY, tabWidth, tabHeight);
             
+            // 绘制tab边框
+            this.ctx.strokeStyle = index === this.currentReportTab ? 'rgba(102, 126, 234, 0.3)' : '#dee2e6';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(tabX, tabY, tabWidth, tabHeight);
+            
             // 绘制tab文字
-            this.ctx.fillStyle = index === this.currentReportTab ? '#ffffff' : '#666666';
-            this.ctx.font = '12px Arial';
+            this.ctx.fillStyle = index === this.currentReportTab ? '#ffffff' : '#6c757d';
+            this.ctx.font = index === this.currentReportTab ? 'bold 12px Arial' : '12px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(tab, tabX + tabWidth/2, tabY + tabHeight/2);
@@ -561,41 +723,60 @@ export default class ProfileTab {
         }
         
         // 绘制报告内容预览
-        const contentY = tabY + tabHeight + 15;
-        const contentHeight = 80;
+        const contentY = tabY + tabHeight + 20;
+        const contentHeight = 90;
+        
+        // 内容区域背景
+        this.ctx.fillStyle = '#fafafa';
+        this.ctx.fillRect(margin + 10, contentY - 5, window.innerWidth - 2 * margin - 20, contentHeight);
         
         if (this.myReport && this.myReport.content) {
             // 显示报告内容的前几行
             const previewText = this.getReportPreview();
-            this.ctx.fillStyle = '#333333';
-            this.ctx.font = '12px Arial';
+            this.ctx.fillStyle = '#2c3e50';
+            this.ctx.font = '13px Arial';
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'top';
             
             // 分行显示文本
-            const lines = this.wrapText(previewText, window.innerWidth - 2 * margin - 30, 12);
+            const lines = this.wrapText(previewText, window.innerWidth - 2 * margin - 50, 13);
             lines.slice(0, 5).forEach((line, index) => {
-                this.ctx.fillText(line, margin + 15, contentY + index * 16);
+                this.ctx.fillText(line, margin + 20, contentY + 5 + index * 18);
             });
         } else {
-            this.ctx.fillStyle = '#999999';
-            this.ctx.font = '14px Arial';
+            // 空状态显示
+            this.ctx.fillStyle = '#e0e0e0';
+            this.ctx.font = '32px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('暂无报告，快去答题吧！', window.innerWidth/2, contentY + contentHeight/2);
+            this.ctx.fillText('📝', window.innerWidth/2, contentY + 25);
+            
+            this.ctx.fillStyle = '#999999';
+            this.ctx.font = '16px Arial';
+            this.ctx.fillText('暂无报告', window.innerWidth/2, contentY + 50);
+            
+            this.ctx.fillStyle = '#cccccc';
+            this.ctx.font = '14px Arial';
+            this.ctx.fillText('快去答题生成你的专属报告吧！', window.innerWidth/2, contentY + 70);
         }
         
         // 绘制"查看更多"按钮
-        const moreButtonWidth = 80;
-        const moreButtonHeight = 25;
+        const moreButtonWidth = 100;
+        const moreButtonHeight = 35;
         const moreButtonX = window.innerWidth - margin - 15 - moreButtonWidth;
-        const moreButtonY = startY + reportHeight - 15 - moreButtonHeight;
+        const moreButtonY = startY + reportHeight - 20 - moreButtonHeight;
         
-        this.ctx.fillStyle = '#007bff';
+        const moreBtnGradient = this.ctx.createLinearGradient(moreButtonX, moreButtonY, moreButtonX, moreButtonY + moreButtonHeight);
+        moreBtnGradient.addColorStop(0, '#4facfe');
+        moreBtnGradient.addColorStop(1, '#00f2fe');
+        this.ctx.fillStyle = moreBtnGradient;
         this.ctx.fillRect(moreButtonX, moreButtonY, moreButtonWidth, moreButtonHeight);
         
+        this.ctx.strokeStyle = 'rgba(79, 172, 254, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(moreButtonX, moreButtonY, moreButtonWidth, moreButtonHeight);
+        
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '12px Arial';
+        this.ctx.font = 'bold 14px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('查看更多', moreButtonX + moreButtonWidth/2, moreButtonY + moreButtonHeight/2);
@@ -1368,10 +1549,29 @@ export default class ProfileTab {
          const screenWidth = window.innerWidth;
          const screenHeight = window.innerHeight;
          const tabHeight = 100; // 底部tab栏高度
-         const linkHeight = 35;
-         const linkSpacing = 8;
+         const linkHeight = 45;
+         const linkSpacing = 2;
          const totalLinksHeight = this.footerLinks.length * linkHeight + (this.footerLinks.length - 1) * linkSpacing;
-         const startY = screenHeight - tabHeight - totalLinksHeight - 30;
+         const startY = screenHeight - tabHeight - totalLinksHeight - 40;
+         
+         // 绘制底部链接区域背景
+         const bgY = startY - 15;
+         const bgHeight = totalLinksHeight + 30;
+         
+         // 背景渐变
+         const bgGradient = this.ctx.createLinearGradient(0, bgY, 0, bgY + bgHeight);
+         bgGradient.addColorStop(0, '#f8f9fa');
+         bgGradient.addColorStop(1, '#ffffff');
+         this.ctx.fillStyle = bgGradient;
+         this.ctx.fillRect(0, bgY, screenWidth, bgHeight);
+         
+         // 顶部装饰线
+         this.ctx.strokeStyle = '#e9ecef';
+         this.ctx.lineWidth = 1;
+         this.ctx.beginPath();
+         this.ctx.moveTo(0, bgY);
+         this.ctx.lineTo(screenWidth, bgY);
+         this.ctx.stroke();
          
          // 清空之前的点击区域
          this.footerLinkBounds = [];
@@ -1379,8 +1579,8 @@ export default class ProfileTab {
          // 绘制每个链接
          this.footerLinks.forEach((link, index) => {
              const y = startY + index * (linkHeight + linkSpacing);
-             const x = 15;
-             const width = screenWidth - 30;
+             const x = 20;
+             const width = screenWidth - 40;
              
              // 存储点击区域
              this.footerLinkBounds.push({
@@ -1391,32 +1591,52 @@ export default class ProfileTab {
                  action: link.action
              });
              
-             // 绘制链接背景（轻微的背景色）
+             // 绘制链接卡片背景
              this.ctx.fillStyle = '#ffffff';
              this.ctx.fillRect(x, y, width, linkHeight);
              
-             // 绘制分隔线（除了最后一个）
-             if (index < this.footerLinks.length - 1) {
-                 this.ctx.strokeStyle = '#e9ecef';
-                 this.ctx.lineWidth = 0.5;
-                 this.ctx.beginPath();
-                 this.ctx.moveTo(x + 10, y + linkHeight);
-                 this.ctx.lineTo(x + width - 10, y + linkHeight);
-                 this.ctx.stroke();
-             }
+             // 绘制卡片阴影
+             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+             this.ctx.fillRect(x + 1, y + 1, width, linkHeight);
              
-             // 绘制链接文字
-             this.ctx.fillStyle = '#666666';
-             this.ctx.font = '14px Arial';
+             // 绘制左侧装饰条
+             this.ctx.fillStyle = '#667eea';
+             this.ctx.fillRect(x, y, 3, linkHeight);
+             
+             // 绘制链接图标
+             const iconMap = {
+                 'userAgreement': '📄',
+                 'privacyPolicy': '🔒',
+                 'contactUs': '📞',
+                 'aboutUs': 'ℹ️'
+             };
+             
+             this.ctx.fillStyle = '#667eea';
+             this.ctx.font = '18px Arial';
              this.ctx.textAlign = 'left';
              this.ctx.textBaseline = 'middle';
-             this.ctx.fillText(link.name, x + 15, y + linkHeight/2);
+             this.ctx.fillText(iconMap[link.action] || '📋', x + 15, y + linkHeight/2);
+             
+             // 绘制链接文字
+             this.ctx.fillStyle = '#2c3e50';
+             this.ctx.font = '15px Arial';
+             this.ctx.fillText(link.name, x + 45, y + linkHeight/2);
              
              // 绘制箭头
-             this.ctx.fillStyle = '#cccccc';
-             this.ctx.font = '16px Arial';
+             this.ctx.fillStyle = '#bdc3c7';
+             this.ctx.font = '18px Arial';
              this.ctx.textAlign = 'right';
              this.ctx.fillText('›', x + width - 15, y + linkHeight/2);
+             
+             // 绘制分隔线（除了最后一个）
+             if (index < this.footerLinks.length - 1) {
+                 this.ctx.strokeStyle = '#f1f3f4';
+                 this.ctx.lineWidth = 1;
+                 this.ctx.beginPath();
+                 this.ctx.moveTo(x + 45, y + linkHeight);
+                 this.ctx.lineTo(x + width - 15, y + linkHeight);
+                 this.ctx.stroke();
+             }
          });
      }
 

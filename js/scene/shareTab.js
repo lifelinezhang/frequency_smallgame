@@ -128,8 +128,11 @@ export default class ShareTab {
         // 清除内容区域，保留底部tab栏
         this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
         
-        // 绘制背景（只绘制内容区域，不覆盖底部tab栏）
-        this.ctx.fillStyle = '#f5f5f5';
+        // 绘制背景渐变（只绘制内容区域，不覆盖底部tab栏）
+        const bgGradient = this.ctx.createLinearGradient(0, 0, 0, window.innerHeight - 100);
+        bgGradient.addColorStop(0, '#f8f9fa');
+        bgGradient.addColorStop(1, '#e9ecef');
+        this.ctx.fillStyle = bgGradient;
         this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight - 100);
         
         if (this.isLoading) {
@@ -169,23 +172,49 @@ export default class ShareTab {
     drawHeader() {
         const centerX = window.innerWidth / 2;
         
-        // 绘制标题
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = 'bold 24px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('好友分享', centerX, 40);
+        // 绘制渐变背景
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, 90);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, window.innerWidth, 90);
         
-        // 绘制钥匙数量
+        // 绘制标题
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 26px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('好友分享', centerX, 35);
+        
+        // 绘制钥匙信息卡片
+        const keyCardWidth = 120;
+        const keyCardHeight = 30;
+        const keyCardX = window.innerWidth - keyCardWidth - 15;
+        const keyCardY = 10;
+        
+        // 钥匙卡片背景
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(keyCardX, keyCardY, keyCardWidth, keyCardHeight);
+        
+        // 钥匙卡片边框
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(keyCardX, keyCardY, keyCardWidth, keyCardHeight);
+        
+        // 钥匙图标和数量
         this.ctx.fillStyle = '#FFD700';
         this.ctx.font = '16px Arial';
-        this.ctx.textAlign = 'right';
-        this.ctx.fillText(`🔑 钥匙: ${this.keyInfo.keyCount}`, window.innerWidth - 20, 30);
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('🔑', keyCardX + 8, keyCardY + 20);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.fillText(`${this.keyInfo.keyCount}`, keyCardX + 30, keyCardY + 20);
         
         // 绘制说明文字
-        this.ctx.fillStyle = '#666666';
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('查看好友的同频报告，消耗钥匙解锁', centerX, 70);
+        this.ctx.fillText('查看好友的同频报告，消耗钥匙解锁', centerX, 65);
     }
 
     /**
@@ -193,15 +222,72 @@ export default class ShareTab {
      */
     drawFriendsList() {
         if (this.friendsList.length === 0) {
-            this.ctx.fillStyle = '#999999';
-            this.ctx.font = '16px Arial';
+            // 绘制空状态
+            const emptyStateY = 250;
+            const screenWidth = window.innerWidth;
+            
+            // 绘制空状态背景卡片
+            const cardWidth = screenWidth - 60;
+            const cardHeight = 200;
+            const cardX = 30;
+            const cardY = emptyStateY - 50;
+            
+            // 卡片阴影
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            this.ctx.fillRect(cardX + 3, cardY + 3, cardWidth, cardHeight);
+            
+            // 卡片背景
+            const cardGradient = this.ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardHeight);
+            cardGradient.addColorStop(0, '#ffffff');
+            cardGradient.addColorStop(1, '#f8f9fa');
+            this.ctx.fillStyle = cardGradient;
+            this.ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+            
+            // 卡片边框
+            this.ctx.strokeStyle = '#e9ecef';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
+            
+            // 绘制图标背景圆圈
+            const iconSize = 60;
+            const iconX = screenWidth/2;
+            const iconY = emptyStateY;
+            
+            const iconGradient = this.ctx.createRadialGradient(iconX, iconY, 0, iconX, iconY, iconSize/2);
+            iconGradient.addColorStop(0, '#667eea');
+            iconGradient.addColorStop(1, '#764ba2');
+            this.ctx.fillStyle = iconGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(iconX, iconY, iconSize/2, 0, 2 * Math.PI);
+            this.ctx.fill();
+            
+            // 绘制图标
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '32px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('暂无好友数据', window.innerWidth/2, 150);
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('👥', iconX, iconY);
+            
+            // 绘制主标题
+            this.ctx.fillStyle = '#2c3e50';
+            this.ctx.font = 'bold 18px Arial';
+            this.ctx.fillText('暂无好友', screenWidth/2, emptyStateY + 50);
+            
+            // 绘制副标题
+            this.ctx.fillStyle = '#7f8c8d';
+            this.ctx.font = '14px Arial';
+            this.ctx.fillText('邀请朋友一起测试，查看彼此的性格报告', screenWidth/2, emptyStateY + 75);
+            
+            // 绘制提示文字
+            this.ctx.fillStyle = '#95a5a6';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText('分享给朋友，让他们也来测试吧！', screenWidth/2, emptyStateY + 100);
+            
             return;
         }
         
-        const itemHeight = 120;
-        const startY = 100;
+        const itemHeight = 130;
+        const startY = 110;
         
         this.friendsList.forEach((friend, index) => {
             const y = startY + index * itemHeight;
@@ -215,59 +301,113 @@ export default class ShareTab {
      * @param {number} y - Y坐标
      */
     drawFriendItem(friend, y) {
-        const itemWidth = window.innerWidth - 40;
-        const itemX = 20;
+        const itemWidth = window.innerWidth - 30;
+        const itemX = 15;
+        const itemHeight = 110;
         const isUnlocked = this.unlockedReports.has(friend.id);
+        
+        // 绘制卡片阴影
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(itemX + 2, y + 2, itemWidth, itemHeight);
         
         // 绘制背景卡片
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillRect(itemX, y, itemWidth, 100);
+        this.ctx.fillRect(itemX, y, itemWidth, itemHeight);
         
-        // 绘制边框
-        this.ctx.strokeStyle = '#e0e0e0';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(itemX, y, itemWidth, 100);
+        // 绘制左侧彩色条
+        const statusColor = friend.hasReport ? (isUnlocked ? '#28a745' : '#ffc107') : '#6c757d';
+        this.ctx.fillStyle = statusColor;
+        this.ctx.fillRect(itemX, y, 4, itemHeight);
         
         // 绘制好友头像
-        this.drawFriendAvatar(friend.avatar, itemX + 15, y + 15, 50, 50);
+        this.drawFriendAvatar(friend.avatar, itemX + 20, y + 20, 60, 60);
         
         // 绘制好友昵称
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = 'bold 16px Arial';
+        this.ctx.fillStyle = '#2c3e50';
+        this.ctx.font = 'bold 18px Arial';
         this.ctx.textAlign = 'left';
-        this.ctx.fillText(friend.nickName || '好友', itemX + 80, y + 30);
+        this.ctx.fillText(friend.nickName || '好友', itemX + 95, y + 35);
         
         // 绘制报告状态信息
-        this.ctx.fillStyle = '#666666';
+        this.ctx.fillStyle = '#7f8c8d';
         this.ctx.font = '14px Arial';
         const statusText = friend.hasReport ? '已生成同频报告' : '暂无同频报告';
-        this.ctx.fillText(statusText, itemX + 80, y + 50);
+        this.ctx.fillText(statusText, itemX + 95, y + 55);
+        
+        // 绘制状态标签
+        const tagWidth = 60;
+        const tagHeight = 20;
+        const tagX = itemX + 95;
+        const tagY = y + 65;
+        
+        this.ctx.fillStyle = statusColor;
+        this.ctx.fillRect(tagX, tagY, tagWidth, tagHeight);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        const tagText = friend.hasReport ? (isUnlocked ? '已解锁' : '未解锁') : '无报告';
+        this.ctx.fillText(tagText, tagX + tagWidth/2, tagY + 14);
         
         // 只有当好友有报告时才绘制按钮
         if (friend.hasReport) {
-            const buttonWidth = 80;
-            const buttonHeight = 30;
+            const buttonWidth = 90;
+            const buttonHeight = 35;
             const buttonX = itemX + itemWidth - buttonWidth - 15;
-            const buttonY = y + 35;
+            const buttonY = y + 38;
             
             if (isUnlocked) {
                 // 已解锁 - 绘制查看按钮
-                this.ctx.fillStyle = '#007AFF';
+                // 按钮阴影
+                this.ctx.fillStyle = 'rgba(78, 205, 196, 0.3)';
+                this.ctx.fillRect(buttonX + 2, buttonY + 2, buttonWidth, buttonHeight);
+                
+                const gradient = this.ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight);
+                gradient.addColorStop(0, '#4ecdc4');
+                gradient.addColorStop(0.5, '#26d0ce');
+                gradient.addColorStop(1, '#44a08d');
+                this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
                 
+                // 按钮高光
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight/3);
+                
+                // 按钮图标
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = '14px Arial';
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText('查看报告', buttonX + buttonWidth/2, buttonY + buttonHeight/2 + 5);
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('📊', buttonX + buttonWidth/2 - 20, buttonY + buttonHeight/2);
+                
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.fillText('查看报告', buttonX + buttonWidth/2 + 8, buttonY + buttonHeight/2);
             } else {
                 // 未解锁 - 绘制解锁按钮
-                this.ctx.fillStyle = '#FF6B35';
+                // 按钮阴影
+                this.ctx.fillStyle = 'rgba(255, 107, 107, 0.3)';
+                this.ctx.fillRect(buttonX + 2, buttonY + 2, buttonWidth, buttonHeight);
+                
+                const gradient = this.ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight);
+                gradient.addColorStop(0, '#ff6b6b');
+                gradient.addColorStop(0.5, '#ff5252');
+                gradient.addColorStop(1, '#ee5a52');
+                this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
                 
+                // 按钮高光
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight/3);
+                
+                // 按钮图标
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = '14px Arial';
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText('🔑 解锁', buttonX + buttonWidth/2, buttonY + buttonHeight/2 + 5);
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('🔓', buttonX + buttonWidth/2 - 15, buttonY + buttonHeight/2);
+                
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.fillText('解锁', buttonX + buttonWidth/2 + 5, buttonY + buttonHeight/2);
             }
             
             // 存储按钮位置信息，用于点击检测

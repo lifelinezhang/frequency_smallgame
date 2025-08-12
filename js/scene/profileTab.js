@@ -486,7 +486,10 @@ export default class ProfileTab {
     }
 
     drawKeyInfo() {
-        const y = 175;
+        // 动态计算钥匙信息区域的位置，确保与用户信息区域有合适间距
+        const userInfoEndY = 145; // 用户信息卡片结束位置（60 + 85）
+        const spacing = 15; // 与用户信息区域的间距
+        const y = userInfoEndY + spacing;
         const cardWidth = window.innerWidth - 40;
         const cardHeight = 70;
         const cardX = 20;
@@ -637,37 +640,63 @@ export default class ProfileTab {
      */
     /**
      * 绘制我的报告区域
+     * 根据屏幕高度动态调整位置和大小，确保在不同机型下都能正常显示
+     * 
+     * 适配策略：
+     * 1. 根据屏幕高度动态计算可用空间
+     * 2. 设置最小和最大报告高度限制
+     * 3. 在空间不足时调整起始位置
+     * 4. 动态调整内容显示行数
+     * 5. 确保与底部tab栏和链接区域不重叠
      */
     drawMyReports() {
-        const startY = 330;
-        const reportHeight = 220;
+        const screenHeight = window.innerHeight;
+        const tabHeight = 100; // 底部tab栏高度
+        const footerLinksHeight = this.footerLinks ? this.footerLinks.length * 47 + 70 : 250; // 底部链接区域高度
         const margin = 20;
+        
+        // 动态计算报告区域的起始位置和高度
+        const userInfoHeight = 160; // 用户信息区域高度（包括头部渐变背景）
+        const keyInfoHeight = 70; // 钥匙信息区域高度
+        const spacing = 15; // 组件间距
+        const fixedContentHeight = userInfoHeight + keyInfoHeight + spacing * 2; // 固定内容总高度
+        
+        const availableHeight = screenHeight - tabHeight - footerLinksHeight - fixedContentHeight - 40; // 40是额外的边距
+        const minReportHeight = 160; // 最小报告高度
+        const maxReportHeight = 280; // 最大报告高度
+        
+        const baseStartY = userInfoHeight + keyInfoHeight + spacing * 2;
+        const reportHeight = Math.max(minReportHeight, Math.min(maxReportHeight, availableHeight));
+        
+        // 如果可用高度不足，调整起始位置以确保报告区域可见
+        const adjustedStartY = availableHeight < minReportHeight ? 
+            Math.max(baseStartY, screenHeight - tabHeight - footerLinksHeight - minReportHeight - 20) : baseStartY;
         
         // 绘制报告容器阴影
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        this.ctx.fillRect(margin + 2, startY + 2, window.innerWidth - 2 * margin, reportHeight);
+        this.ctx.fillRect(margin + 2, adjustedStartY + 2, window.innerWidth - 2 * margin, reportHeight);
         
         // 绘制报告容器背景
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillRect(margin, startY, window.innerWidth - 2 * margin, reportHeight);
+        this.ctx.fillRect(margin, adjustedStartY, window.innerWidth - 2 * margin, reportHeight);
         
         // 绘制顶部装饰条
-        const decorGradient = this.ctx.createLinearGradient(margin, startY, margin + window.innerWidth - 2 * margin, startY);
+        const decorGradient = this.ctx.createLinearGradient(margin, adjustedStartY, margin + window.innerWidth - 2 * margin, adjustedStartY);
         decorGradient.addColorStop(0, '#667eea');
         decorGradient.addColorStop(1, '#764ba2');
         this.ctx.fillStyle = decorGradient;
-        this.ctx.fillRect(margin, startY, window.innerWidth - 2 * margin, 4);
+        this.ctx.fillRect(margin, adjustedStartY, window.innerWidth - 2 * margin, 4);
         
         // 绘制标题区域背景
         this.ctx.fillStyle = '#f8f9fa';
-        this.ctx.fillRect(margin, startY + 4, window.innerWidth - 2 * margin, 40);
+        this.ctx.fillRect(margin, adjustedStartY + 4, window.innerWidth - 2 * margin, 40);
         
         // 绘制标题
         this.ctx.fillStyle = '#2c3e50';
         this.ctx.font = 'bold 18px Arial';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
-        this.ctx.fillText('📊 我的报告', margin + 15, startY + 20);
+        this.ctx.fillText('📊 我的报告', margin + 15, adjustedStartY + 20);
         
         // 确保报告数据已解析
         if (this.reportTabs.length === 0) {
@@ -675,8 +704,8 @@ export default class ProfileTab {
         }
         
         // 绘制tab标签
-        const tabY = startY + 55;
-        const tabHeight = 30;
+        const tabY = adjustedStartY + 55;
+        const reportTabHeight = 30;
         const tabWidth = 70;
         const tabSpacing = 8;
         
@@ -693,38 +722,40 @@ export default class ProfileTab {
                 x: tabX,
                 y: tabY,
                 width: tabWidth,
-                height: tabHeight,
+                height: reportTabHeight,
                 index: index
             });
             
             // 绘制tab背景
             if (index === this.currentReportTab) {
-                const activeTabGradient = this.ctx.createLinearGradient(tabX, tabY, tabX, tabY + tabHeight);
+                const activeTabGradient = this.ctx.createLinearGradient(tabX, tabY, tabX, tabY + reportTabHeight);
                 activeTabGradient.addColorStop(0, '#667eea');
                 activeTabGradient.addColorStop(1, '#764ba2');
                 this.ctx.fillStyle = activeTabGradient;
             } else {
                 this.ctx.fillStyle = '#e9ecef';
             }
-            this.ctx.fillRect(tabX, tabY, tabWidth, tabHeight);
+            this.ctx.fillRect(tabX, tabY, tabWidth, reportTabHeight);
             
             // 绘制tab边框
             this.ctx.strokeStyle = index === this.currentReportTab ? 'rgba(102, 126, 234, 0.3)' : '#dee2e6';
             this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(tabX, tabY, tabWidth, tabHeight);
+            this.ctx.strokeRect(tabX, tabY, tabWidth, reportTabHeight);
             
             // 绘制tab文字
             this.ctx.fillStyle = index === this.currentReportTab ? '#ffffff' : '#6c757d';
             this.ctx.font = index === this.currentReportTab ? 'bold 12px Arial' : '12px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(tab, tabX + tabWidth/2, tabY + tabHeight/2);
+            this.ctx.fillText(tab, tabX + tabWidth/2, tabY + reportTabHeight/2);
             });
         }
         
         // 绘制报告内容预览
-        const contentY = tabY + tabHeight + 20;
-        const contentHeight = 90;
+        const contentY = tabY + reportTabHeight + 20;
+        // 根据可用空间动态调整内容高度
+        const remainingHeight = adjustedStartY + reportHeight - contentY - 60; // 60是底部按钮区域的高度
+        const contentHeight = Math.max(60, Math.min(90, remainingHeight));
         
         // 内容区域背景
         this.ctx.fillStyle = '#fafafa';
@@ -738,9 +769,11 @@ export default class ProfileTab {
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'top';
             
-            // 分行显示文本
+            // 分行显示文本，根据内容高度动态调整显示行数
             const lines = this.wrapText(previewText, window.innerWidth - 2 * margin - 50, 13);
-            lines.slice(0, 5).forEach((line, index) => {
+            const maxLines = Math.floor((contentHeight - 10) / 18); // 根据内容高度计算最大行数
+            const displayLines = Math.max(1, Math.min(maxLines, lines.length));
+            lines.slice(0, displayLines).forEach((line, index) => {
                 this.ctx.fillText(line, margin + 20, contentY + 5 + index * 18);
             });
         } else {
@@ -760,10 +793,10 @@ export default class ProfileTab {
         }
         
         // 绘制"查看更多"按钮
-        const moreButtonWidth = 100;
-        const moreButtonHeight = 35;
+        const moreButtonWidth = 70;
+        const moreButtonHeight = 24;
         const moreButtonX = window.innerWidth - margin - 15 - moreButtonWidth;
-        const moreButtonY = startY + reportHeight - 20 - moreButtonHeight;
+        const moreButtonY = adjustedStartY + reportHeight - 20 - moreButtonHeight;
         
         const moreBtnGradient = this.ctx.createLinearGradient(moreButtonX, moreButtonY, moreButtonX, moreButtonY + moreButtonHeight);
         moreBtnGradient.addColorStop(0, '#4facfe');
@@ -776,7 +809,7 @@ export default class ProfileTab {
         this.ctx.strokeRect(moreButtonX, moreButtonY, moreButtonWidth, moreButtonHeight);
         
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 14px Arial';
+        this.ctx.font = 'bold 12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('查看更多', moreButtonX + moreButtonWidth/2, moreButtonY + moreButtonHeight/2);
@@ -991,11 +1024,14 @@ export default class ProfileTab {
             return true; // 表示事件已处理
         }
         
-        // 检查是否点击了更新报告按钮
-        const updateButtonWidth = 80;
-        const updateButtonHeight = 30;
-        const updateButtonX = window.innerWidth - 40 - updateButtonWidth;
-        const updateButtonY = 95;
+        // 检查是否点击了更新报告按钮（动态计算位置）
+        const cardX = 20;
+        const cardY = 60;
+        const cardWidth = window.innerWidth - 40;
+        const updateButtonWidth = 90;
+        const updateButtonHeight = 35;
+        const updateButtonX = cardX + cardWidth - updateButtonWidth - 15;
+        const updateButtonY = cardY + 25;
         
         if (x >= updateButtonX && x <= updateButtonX + updateButtonWidth && 
             y >= updateButtonY && y <= updateButtonY + updateButtonHeight) {
@@ -1004,8 +1040,10 @@ export default class ProfileTab {
             return true; // 表示事件已处理
         }
         
-        // 检查是否点击了观看广告按钮
-        if (y >= 170 && y <= 210 && x >= window.innerWidth - 120) {
+        // 检查是否点击了观看广告按钮（动态计算位置）
+        const keyInfoY = 145 + 15; // 用户信息结束位置 + 间距
+        const adButtonY = keyInfoY + 35; // 钥匙信息中间位置
+        if (y >= adButtonY - 20 && y <= adButtonY + 20 && x >= window.innerWidth - 120) {
             this.showAdVideo();
             return true; // 表示事件已处理
         }

@@ -22,10 +22,9 @@ export default class Main {
         DataStore.getInstance().sharedCanvas = sharedCanvas;
 
         this.dataStore = DataStore.getInstance();
-        this.director = Director.getInstance(this.ctx);
+        this.director = Director.getInstance();
         const loader = ResourceLoader.create();
         loader.onLoaded(map => this.onResourceFirstLoaded(map));
-        this.director = Director.getInstance();
     }
     // 资源首次加载完成，
     onResourceFirstLoaded (map) {

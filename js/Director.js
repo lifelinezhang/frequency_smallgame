@@ -153,14 +153,10 @@ export default class Director {
     
     /**
      * 处理答题完成后的逻辑
-     * 将用户答案传递给好友排行榜
-     */
-    /**
-     * 处理答题完成逻辑
-     * 从后端获取用户的完整答题记录
+     * 显示30秒等待提示，然后获取报告
      */
     async handleQuizCompletion() {
-        console.log('答题完成，开始处理用户答案和获取好友列表');
+        console.log('答题完成，开始处理用户答案');
         
         // 首先保存用户答案到云存储
         const quizSession = DataStore.getInstance().quizSession;
@@ -171,62 +167,67 @@ export default class Director {
             console.warn('⚠️ 未找到用户答案数据，无法保存到云存储');
         }
         
-        try {
-            wx.showLoading({
-                title: '正在处理答题记录，请耐心等待...',
-                mask: true
-            });
-            
-            // 获取好友列表
-            const friendsResponse = await getFriendsList();
-            
-            if (friendsResponse && friendsResponse.data && friendsResponse.data.length > 0) {
-                console.log('获取到好友列表:', friendsResponse.data);
-                
-                // 获取第一个好友
-                const firstFriend = friendsResponse.data[0];
-                console.log('第一个好友信息:', firstFriend);
-                
-                try {
-                    // 检查好友是否有报告
-                    if (firstFriend.hasReport && firstFriend.reportId) {
-                        // 获取与第一个好友的同频度报告
-                        const frequencyResponse = await getFrequencyReport(firstFriend.reportId);
-                        
-                        if (frequencyResponse && frequencyResponse.data) {
-                            console.log('获取到同频度报告:', frequencyResponse.data);
-                            wx.hideLoading();
-                            
-                            // 显示同频度报告
-                            this.showFrequencyReport(frequencyResponse.data, firstFriend);
-                            return;
-                        }
-                    } else {
-                        console.log('好友没有同频度报告');
-                    }
-                } catch (frequencyError) {
-                    console.log('获取同频度报告失败:', frequencyError);
+        // 隐藏之前的加载提示
+        wx.hideLoading();
+        
+        // 显示简单的完成提示，然后直接跳转
+        wx.showToast({
+            title: '🎉 答题完成！正在跳转到我的报告...',
+            icon: 'success',
+            duration: 2000
+        });
+        
+        // 延迟跳转，让用户看到完成提示
+        setTimeout(() => {
+            this.goToMyTab();
+        }, 2000);
+    }
+    
+    /**
+     * 显示答题完成提示弹框
+     * 点击后跳转到我的tab
+     */
+    showWaitingDialog() {
+        wx.showModal({
+            title: '🎉 答题完成',
+            content: `恭喜您完成了所有题目！\n\n您的个性化答题报告正在生成中...\n\n💡 点击确定查看您的答题记录和报告`,
+            showCancel: false,
+            confirmText: '查看我的报告',
+            confirmColor: '#007AFF',
+            success: (res) => {
+                if (res.confirm) {
+                    // 点击后跳转到我的tab（profileTab）
+                    this.goToMyTab();
                 }
             }
-            
-            // 如果没有好友或获取同频度报告失败，跳转到我的报告页面
-            console.log('没有好友或获取同频度报告失败，跳转到我的报告页面');
-            wx.hideLoading();
-            this.showMyReportPage();
-            
-        } catch (error) {
-            console.error('获取好友信息失败:', error);
-            wx.hideLoading();
-            wx.showToast({
-                title: '网络连接超时，正在为您跳转到个人报告',
-                icon: 'none',
-                duration: 2000
-            });
-            // 延迟跳转到我的报告页面
-            setTimeout(() => {
-                this.showMyReportPage();
-            }, 2000);
+        });
+    }
+    
+    /**
+     * 跳转到我的tab
+     */
+    goToMyTab() {
+        console.log('跳转到我的tab');
+        
+        // 清理当前画布
+        let ctx = DataStore.getInstance().ctx;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        
+        // 跳转到tab场景并切换到我的tab（索引为2）
+        if (this.tabScene) {
+            this.tabScene.switchTab(2); // 我的tab通常是索引2
+            this.tabScene.resume();
+        } else {
+            this.showTabScene(ctx);
+            if (this.tabScene) {
+                this.tabScene.switchTab(2);
+            }
         }
+        
+        // 设置当前画布
+        DataStore.getInstance().currentCanvas = 'tabScene';
+        
+        console.log('已跳转到我的tab');
     }
     
     /**
@@ -287,14 +288,15 @@ export default class Director {
                 // 跳转到我的报告页面（ProfileTab）
                 this.backToTabScene();
                 
-                // 设置当前tab为我的页面并显示报告
-                if (this.tabScene) {
-                    this.tabScene.currentTab = 1; // 我的页面
-                    const profileTab = this.tabScene.getTab(1);
-                    if (profileTab && typeof profileTab.showMyReports === 'function') {
-                        profileTab.showMyReports();
+                // 延迟调用showMyReports，确保TabScene已经完全初始化
+                setTimeout(() => {
+                    if (this.tabScene) {
+                        const profileTab = this.tabScene.getTab(2);
+                        if (profileTab && typeof profileTab.showMyReports === 'function') {
+                            profileTab.showMyReports();
+                        }
                     }
-                }
+                }, 100);
             } else {
                 wx.hideLoading();
                 wx.showToast({
@@ -405,14 +407,14 @@ export default class Director {
         
         // 恢复TabScene
         if (this.tabScene) {
-            // 设置当前tab为"我的"页面（隐藏推荐tab后，索引变为1）
-            this.tabScene.currentTab = 1;
+            // 设置当前tab为"我的"页面（ProfileTab的正确索引为2）
+            this.tabScene.currentTab = 2;
             this.tabScene.resume();
         } else {
             this.showTabScene(ctx);
-            // 设置默认显示"我的"页面（隐藏推荐tab后，索引变为1）
+            // 设置默认显示"我的"页面（ProfileTab的正确索引为2）
             if (this.tabScene) {
-                this.tabScene.currentTab = 1;
+                this.tabScene.currentTab = 2;
             }
         }
         

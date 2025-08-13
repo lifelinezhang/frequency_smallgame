@@ -153,7 +153,7 @@ export default class Director {
     
     /**
      * 处理答题完成后的逻辑
-     * 显示30秒等待提示，然后获取报告
+     * 清空报告数据，启动特殊刷新机制
      */
     async handleQuizCompletion() {
         console.log('答题完成，开始处理用户答案');
@@ -179,8 +179,24 @@ export default class Director {
         
         // 延迟跳转，让用户看到完成提示
         setTimeout(() => {
-            this.goToMyTab();
+            this.goToMyTabWithReportRefresh();
         }, 2000);
+    }
+
+    /**
+     * 跳转到我的tab并启动报告刷新
+     */
+    goToMyTabWithReportRefresh() {
+        // 跳转到我的tab
+        this.goToMyTab();
+        
+        // 启动答题完成后的报告刷新机制
+        setTimeout(() => {
+            const profileTab = this.tabScene?.profileTab;
+            if (profileTab && typeof profileTab.startPostQuizReportRefresh === 'function') {
+                profileTab.startPostQuizReportRefresh();
+            }
+        }, 500); // 等待页面切换完成
     }
     
     /**

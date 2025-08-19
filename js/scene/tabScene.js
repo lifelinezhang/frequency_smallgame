@@ -86,6 +86,16 @@ export default class TabScene {
                 }
             }, 50);
         }
+        
+        // 如果是我的tab，重新启动自动刷新
+        if (index === 2 && currentTab) {
+            console.log('进入我的tab，启动自动刷新');
+            setTimeout(() => {
+                if (typeof currentTab.startReportAutoRefresh === 'function') {
+                    currentTab.startReportAutoRefresh();
+                }
+            }, 50);
+        }
     }
 
     /**

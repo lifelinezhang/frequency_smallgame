@@ -158,8 +158,20 @@ export default class Director {
     async handleQuizCompletion() {
         console.log('答题完成，开始处理用户答案');
         
-        // 首先保存用户答案到云存储
+        // 检查当前是否真的在答题场景中，避免误触发
+        const currentCanvas = DataStore.getInstance().currentCanvas;
         const quizSession = DataStore.getInstance().quizSession;
+        
+        // 只有在答题场景中且确实完成了答题才执行跳转逻辑
+        if (currentCanvas !== 'questionCanvas' || !quizSession || !quizSession.isCompleted || quizSession.isProcessed) {
+            console.log('非答题场景或未完成答题或已处理过，跳过自动跳转逻辑');
+            return;
+        }
+        
+        // 标记为已处理，防止重复触发
+        quizSession.isProcessed = true;
+        
+        // 首先保存用户答案到云存储
         if (quizSession && quizSession.userAnswers) {
             console.log('✅ 获取到用户答案，准备保存到云存储:', quizSession.userAnswers.length, '个答案');
             this.updateFriendsTabWithAnswers(quizSession.userAnswers);

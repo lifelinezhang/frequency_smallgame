@@ -1811,6 +1811,15 @@ export default class ProfileTab {
     }
 
     /**
+     * 停止刷新循环（由tabScene调用）
+     * 当切换到其他tab时停止自动刷新
+     */
+    stopRefreshLoop() {
+        this.stopReportAutoRefresh();
+        console.log('ProfileTab刷新循环已停止');
+    }
+
+    /**
      * 刷新报告数据
      */
     async refreshReportData() {

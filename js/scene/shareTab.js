@@ -28,8 +28,28 @@ export default class ShareTab {
         this.scrollY = 0; // 滚动偏移量
         this.maxScrollY = 0; // 最大滚动距离
         
+        // 确保当前场景状态正确，防止意外触发答题完成流程
+        this.ensureCorrectSceneState();
+        
         this.render(); // 先渲染加载界面
         this.loadData(); // 异步加载数据
+    }
+
+    /**
+     * 确保当前场景状态正确
+     * 防止意外触发答题完成流程
+     */
+    ensureCorrectSceneState() {
+        // 设置当前画布状态为tabScene，确保不会被误认为是答题场景
+        DataStore.getInstance().currentCanvas = 'tabScene';
+        
+        // 清理可能存在的答题会话状态，防止意外触发
+        const quizSession = DataStore.getInstance().quizSession;
+        if (quizSession && quizSession.isCompleted) {
+            console.log('检测到已完成的答题会话，清理状态以防止意外跳转');
+            // 不完全删除quizSession，只是标记为已处理，避免重复触发
+            quizSession.isProcessed = true;
+        }
     }
 
     /**

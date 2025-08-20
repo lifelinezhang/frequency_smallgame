@@ -16,8 +16,8 @@ export default class FriendsTab {
         this.isDataLoaded = false;
         this.openDataContext = null;
         this.userAnswers = []; // 存储用户答案
-        this.refreshTimer = null; // 刷新定时器
         this.loadingTimer = null; // 加载动画定时器
+        this.isActive = false; // Tab是否处于激活状态
         
         // 下拉刷新相关属性
         this.pullRefresh = {
@@ -33,9 +33,69 @@ export default class FriendsTab {
     }
 
     /**
-     * 设置用户答案数据（从答题完成后调用）
-     * @param {Array} answers - 用户的完整答案数组
+     * Tab激活生命周期方法
+     * 当Tab被激活时调用
      */
+    onTabActivated() {
+        console.log('FriendsTab 被激活');
+        this.isActive = true;
+        
+        const dataStore = DataStore.getInstance();
+        
+        // 检查是否需要刷新数据
+        if (dataStore.needsRefresh('friends')) {
+            console.log('检测到需要刷新好友数据');
+            this.refreshAfterQuiz();
+            dataStore.clearRefreshFlag('friends');
+        } else if (!this.isDataLoaded) {
+            // 首次加载
+            this.loadFriends();
+        }
+    }
+
+    /**
+     * Tab停用生命周期方法
+     * 当Tab被停用时调用
+     */
+    onTabDeactivated() {
+        console.log('FriendsTab 被停用');
+        this.isActive = false;
+        this.stopLoadingAnimation();
+    }
+
+    /**
+      * 答题完成后的专用刷新方法
+      */
+    async refreshAfterQuiz() {
+        console.log('🔄 答题完成后刷新好友数据');
+        
+        try {
+            // 重置数据加载状态
+            this.isDataLoaded = false;
+            
+            // 显示加载界面
+            this.render();
+            
+            // 重新加载好友数据
+            await this.loadFriends();
+            
+            // 如果有用户答案，更新排行榜
+            if (this.userAnswers && this.userAnswers.length > 0) {
+                setTimeout(() => {
+                    this.updateAnswers(this.userAnswers);
+                }, 500);
+            }
+            
+            console.log('✅ 答题后好友数据刷新完成');
+        } catch (error) {
+            console.error('❌ 答题后好友数据刷新失败:', error);
+        }
+    }
+
+    /**
+      * 设置用户答案数据（从答题完成后调用）
+      * @param {Array} answers - 用户的完整答案数组
+      */
     setUserAnswers(answers) {
         this.userAnswers = answers || [];
         console.log('FriendsTab: 接收到用户答案数据:');
@@ -122,7 +182,7 @@ export default class FriendsTab {
             setTimeout(() => {
                 this.openDataContext.postMessage({
                     type: 'similarity',
-                    action: 'forceRefresh'
+                    action: 'updateRankings' // 更新排行榜显示
                 });
                 console.log('已发送强制刷新消息');
             }, 1000);
@@ -236,59 +296,6 @@ export default class FriendsTab {
         } else {
             console.error('❌ 无法获取开放数据域的共享画布');
             this.drawTestContent();
-        }
-        
-        // 启动持续刷新机制，确保开放数据域内容能及时显示
-        this.startRefreshLoop();
-    }
-    
-    /**
-     * 启动刷新循环，持续更新开放数据域内容
-     */
-    startRefreshLoop() {
-        // 清除之前的刷新循环
-        if (this.refreshTimer) {
-            clearInterval(this.refreshTimer);
-        }
-        
-        let refreshCount = 0;
-        
-        // 设置定时刷新，每100ms刷新一次
-        this.refreshTimer = setInterval(() => {
-            if (this.openDataContext && this.openDataContext.canvas) {
-                refreshCount++;
-                
-                // 只清空内容区域，保留底部tab栏（高度100px）
-                this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight - 100);
-                
-                // 重新绘制开放数据域内容，但不覆盖底部tab栏
-                this.ctx.drawImage(this.openDataContext.canvas, 0, 0, window.innerWidth, window.innerHeight - 100, 0, 0, window.innerWidth, window.innerHeight - 100);
-                
-                // 强制刷新主画布
-                this.ctx.save();
-                this.ctx.restore();
-                
-                // 确保tab栏始终显示 - 通知TabScene重新绘制tab栏
-                const dataStore = DataStore.getInstance();
-                if (dataStore.currentTabScene && typeof dataStore.currentTabScene.drawTabBar === 'function') {
-                    dataStore.currentTabScene.drawTabBar();
-                }
-            } else {
-                console.warn('⚠️ 开放数据域或画布不可用');
-            }
-        }, 100);
-        
-        console.log('✅ 开放数据域刷新循环已启动');
-    }
-    
-    /**
-     * 停止刷新循环
-     */
-    stopRefreshLoop() {
-        if (this.refreshTimer) {
-            clearInterval(this.refreshTimer);
-            this.refreshTimer = null;
-            console.log('开放数据域刷新循环已停止');
         }
     }
 
@@ -686,23 +693,9 @@ export default class FriendsTab {
     }
 
     /**
-     * 强制刷新数据（供外部调用）
-     */
-    async forceRefresh() {
-        console.log('🔄 强制刷新好友tab数据');
-        this.isDataLoaded = false;
-        await this.loadFriends();
-        
-        if (this.userAnswers && this.userAnswers.length > 0) {
-            this.updateAnswers(this.userAnswers);
-        }
-    }
-
-    /**
-     * 清理资源，停止刷新循环
+     * 清理资源
      */
     destroy() {
-        this.stopRefreshLoop();
         this.stopLoadingAnimation();
         console.log('FriendsTab 资源已清理');
     }

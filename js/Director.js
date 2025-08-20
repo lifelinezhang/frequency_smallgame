@@ -153,7 +153,7 @@ export default class Director {
     
     /**
      * 处理答题完成后的逻辑
-     * 清空报告数据，启动特殊刷新机制
+     * 使用状态标记机制替代直接调用刷新方法
      */
     async handleQuizCompletion() {
         console.log('答题完成，开始处理用户答案');
@@ -170,6 +170,12 @@ export default class Director {
         
         // 标记为已处理，防止重复触发
         quizSession.isProcessed = true;
+        
+        // 获取DataStore实例
+        const dataStore = DataStore.getInstance();
+        
+        // 设置答题完成状态标记，触发各Tab的刷新
+        dataStore.setQuizCompleted();
         
         // 首先保存用户答案到云存储
         if (quizSession && quizSession.userAnswers) {
@@ -191,26 +197,10 @@ export default class Director {
         
         // 延迟跳转，让用户看到完成提示
         setTimeout(() => {
-            this.goToMyTabWithReportRefresh();
+            this.goToMyTab(); // 直接跳转，不再手动触发刷新
         }, 2000);
     }
 
-    /**
-     * 跳转到我的tab并启动报告刷新
-     */
-    goToMyTabWithReportRefresh() {
-        // 跳转到我的tab
-        this.goToMyTab();
-        
-        // 启动答题完成后的报告刷新机制
-        setTimeout(() => {
-            const profileTab = this.tabScene?.profileTab;
-            if (profileTab && typeof profileTab.startPostQuizReportRefresh === 'function') {
-                profileTab.startPostQuizReportRefresh();
-            }
-        }, 500); // 等待页面切换完成
-    }
-    
     /**
      * 显示答题完成提示弹框
      * 点击后跳转到我的tab

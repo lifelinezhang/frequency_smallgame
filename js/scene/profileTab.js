@@ -15,6 +15,9 @@ export default class ProfileTab {
         this.isLoggedIn = false;
         this.loginButton = null;
         
+        // Tab生命周期状态
+        this.isActive = false;
+        
         // 报告tab相关属性
         this.currentReportTab = 0; // 当前选中的报告tab索引
         this.reportTabs = []; // 动态从报告数据中获取tab标签
@@ -40,11 +43,12 @@ export default class ProfileTab {
             maxPullDistance: 120 // 最大下拉距离
         };
         
-        // 报告自动刷新相关属性
-        this.reportRefreshTimer = null; // 定时器ID
-        this.reportRefreshInterval = 5000; // 5秒刷新间隔
+        // 智能刷新相关属性
+        this.reportRefreshTimer = null; // 智能刷新定时器ID
+        this.reportRefreshInterval = 10000; // 智能刷新间隔
         this.isReportRefreshEnabled = false; // 是否启用自动刷新
-        this.postQuizRefreshTimer = null; // 答题完成后的特殊刷新定时器
+        this.lastRefreshTime = 0; // 上次刷新时间
+        this.isRefreshing = false; // 防止重复刷新标志
         
         this.checkLoginStatus();
         this.loadData();
@@ -109,8 +113,10 @@ export default class ProfileTab {
             // 重新渲染完整页面
             this.render();
             
-            // 启动报告自动刷新（如果尚未启动）
-            this.startReportAutoRefresh();
+            // 启动智能刷新（仅在Tab激活且未启动时）
+            if (this.isActive && !this.reportRefreshTimer) {
+                this.startSmartRefresh();
+            }
             
         } catch (error) {
             console.error('加载用户数据失败:', error);
@@ -129,23 +135,29 @@ export default class ProfileTab {
      * 注意：不要覆盖底部tab栏区域
      */
     render() {
-        // 先绘制背景，但要避免覆盖底部tab栏
-        this.drawBackground();
-        
-        if (!this.isLoggedIn) {
-            this.drawLoginInterface();
-        } else {
-            // 绘制用户头像和信息
-            this.drawUserInfo();
+        try {
+            // 先绘制背景，但要避免覆盖底部tab栏
+            this.drawBackground();
             
-            // 绘制钥匙信息
-            this.drawKeyInfo();
-            
-            // 绘制我的报告
-            this.drawMyReports();
-            
-            // 只有登录后才显示底部链接
-            this.drawFooterLinks();
+            if (!this.isLoggedIn) {
+                this.drawLoginInterface();
+            } else {
+                // 绘制用户头像和信息
+                this.drawUserInfo();
+                
+                // 绘制钥匙信息
+                this.drawKeyInfo();
+                
+                // 绘制我的报告
+                this.drawMyReports();
+                
+                // 只有登录后才显示底部链接
+                this.drawFooterLinks();
+            }
+        } catch (error) {
+            console.error('ProfileTab渲染过程中发生错误:', error);
+            // 渲染失败时停止智能刷新，避免持续错误
+            this.stopAllRefresh();
         }
     }
     
@@ -325,8 +337,10 @@ export default class ProfileTab {
                 // 重新加载数据
                 this.loadData();
                 
-                // 启动报告自动刷新
-                this.startReportAutoRefresh();
+                // 启动智能刷新（仅在Tab激活时）
+                if (this.isActive) {
+                    this.startSmartRefresh();
+                }
             } else {
                 throw new Error(loginResult.msg || '登录失败');
             }
@@ -342,14 +356,8 @@ export default class ProfileTab {
 
     // 退出登录
     logout() {
-        // 停止报告自动刷新
-        this.stopReportAutoRefresh();
-        
-        // 清理答题完成后的刷新定时器
-        if (this.postQuizRefreshTimer) {
-            clearInterval(this.postQuizRefreshTimer);
-            this.postQuizRefreshTimer = null;
-        }
+        // 停止所有刷新机制
+        this.stopAllRefresh();
         
         wx.removeStorageSync('userInfo');
         DataStore.getInstance().userInfo = null;
@@ -960,9 +968,7 @@ export default class ProfileTab {
             return content.length > 200 ? content.substring(0, 200) + '...' : content;
         }
     }
-    
 
-    
     /**
      * 文本换行处理
      * @param {string} text - 要换行的文本
@@ -1373,7 +1379,6 @@ export default class ProfileTab {
     }
     
 
-    
     /**
      * 格式化报告内容用于显示
      * @param {Object} report - 报告数据
@@ -1616,33 +1621,6 @@ export default class ProfileTab {
     }
 
     /**
-     * 强制刷新数据（供外部调用）
-     * 重新加载用户信息、钥匙信息、报告数据等
-     */
-    async forceRefresh() {
-        console.log('🔄 强制刷新个人资料tab数据');
-        try {
-            wx.showLoading({
-                title: '刷新中...'
-            });
-            await this.loadData();
-            wx.hideLoading();
-            wx.showToast({
-                title: '刷新成功',
-                icon: 'success',
-                duration: 1000
-            });
-        } catch (error) {
-            wx.hideLoading();
-            console.error('刷新失败:', error);
-            wx.showToast({
-                title: '刷新失败',
-                icon: 'error'
-            });
-        }
-    }
-
-    /**
       * 绘制底部链接
       */
      drawFooterLinks() {
@@ -1780,52 +1758,114 @@ export default class ProfileTab {
     }
 
     /**
-     * 启动报告自动刷新定时器
+     * 启动智能刷新机制
+     * 只在Tab激活且登录状态下运行
      */
-    startReportAutoRefresh() {
-        if (!this.isLoggedIn || this.reportRefreshTimer) {
-            return; // 未登录或定时器已存在则不启动
+    startSmartRefresh() {
+        if (!this.isLoggedIn || !this.isActive) {
+            return;
         }
+        
+        // 先停止现有的定时器，避免重复启动
+        this.stopAllRefresh();
         
         this.isReportRefreshEnabled = true;
         this.reportRefreshTimer = setInterval(async () => {
-            if (this.isLoggedIn && this.isReportRefreshEnabled) {
-                console.log('自动刷新报告数据...');
-                await this.refreshReportData();
+            try {
+                // 检查Tab是否仍然激活
+                if (!this.isActive || !this.isLoggedIn || !this.isReportRefreshEnabled) {
+                    console.log('Tab已停用或未登录，停止智能刷新');
+                    this.stopAllRefresh();
+                    return;
+                }
+                
+                // 智能刷新：避免频繁刷新
+                const now = Date.now();
+                if (now - this.lastRefreshTime > this.reportRefreshInterval) {
+                    console.log('智能刷新报告数据...');
+                    await this.refreshReportData();
+                    this.lastRefreshTime = now;
+                }
+            } catch (error) {
+                console.error('智能刷新过程中发生错误:', error);
+                // 发生错误时停止刷新，避免持续错误
+                this.stopAllRefresh();
             }
-        }, this.reportRefreshInterval);
+        }, 2000);
         
-        console.log('报告自动刷新已启动，间隔:', this.reportRefreshInterval + 'ms');
+        console.log('智能刷新已启动，检查间隔: 2000ms，刷新间隔:', this.reportRefreshInterval + 'ms');
     }
-
+    
     /**
-     * 停止报告自动刷新定时器
+     * 停止所有刷新机制
      */
-    stopReportAutoRefresh() {
+    stopAllRefresh() {
         if (this.reportRefreshTimer) {
             clearInterval(this.reportRefreshTimer);
             this.reportRefreshTimer = null;
             this.isReportRefreshEnabled = false;
-            console.log('报告自动刷新已停止');
+            this.isRefreshing = false; // 重置刷新状态
+            console.log('所有刷新机制已停止');
         }
     }
 
     /**
-     * 停止刷新循环（由tabScene调用）
-     * 当切换到其他tab时停止自动刷新
+     * Tab激活生命周期方法
+     * 当Tab被激活时调用
      */
-    stopRefreshLoop() {
-        this.stopReportAutoRefresh();
-        console.log('ProfileTab刷新循环已停止');
+    onTabActivated() {
+        console.log('ProfileTab 被激活');
+        this.isActive = true;
+        
+        const dataStore = DataStore.getInstance();
+        
+        // 检查是否需要刷新
+        if (dataStore.needsRefresh('profile')) {
+            console.log('检测到需要刷新Profile数据');
+            this.refreshAfterQuiz();
+            dataStore.clearRefreshFlag('profile');
+        } else if (!this.reportRefreshTimer) {
+            // 启动智能刷新机制（仅在未启动时）
+            this.startSmartRefresh();
+        }
+    }
+    
+    /**
+     * Tab停用生命周期方法
+     * 当Tab被停用时调用
+     */
+    onTabDeactivated() {
+        console.log('ProfileTab 被停用');
+        this.isActive = false;
+        
+        // 停止所有刷新机制
+        this.stopAllRefresh();
     }
 
     /**
      * 刷新报告数据
      */
     async refreshReportData() {
+        // 防止重复调用
+        if (this.isRefreshing) {
+            console.log('报告数据正在刷新中，跳过本次调用');
+            return;
+        }
+        
+        this.isRefreshing = true;
+        
         try {
+            // 添加超时控制，防止长时间阻塞
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('刷新超时')), 15000); // 15秒超时
+            });
+            
             // 获取我的最新报告
-            const myReport = await apiRequest('/report/my');
+            const myReport = await Promise.race([
+                apiRequest('/report/my'),
+                timeoutPromise
+            ]);
+            
             this.myReport = myReport.data;
             // 解析报告数据，更新tab标签
             this.parseReportData();
@@ -1835,150 +1875,160 @@ export default class ProfileTab {
             console.error('刷新报告数据失败:', error);
             // 如果是token失效，停止自动刷新
             if (error.message.includes('token') || error.message.includes('登录')) {
-                this.stopReportAutoRefresh();
+                this.stopAllRefresh();
                 this.logout();
+            } else if (error.message.includes('超时')) {
+                console.warn('报告数据刷新超时，跳过本次刷新');
             }
+        } finally {
+            this.isRefreshing = false;
         }
     }
 
     /**
-     * 答题完成后启动特殊的报告刷新机制
-     * 清空之前的报告数据，每5秒刷新一次直到获取到最新数据
+     * 答题完成后的专用刷新方法
      */
-    startPostQuizReportRefresh() {
-        console.log('🎯 启动答题完成后的报告刷新机制');
+    async refreshAfterQuiz() {
+        console.log('🔄 答题完成后刷新Profile数据');
         
-        // 停止之前的自动刷新
-        this.stopReportAutoRefresh();
-        
-        // 完全清空之前的报告相关数据
-        this.myReport = null;
-        this.reportTabs = [];
-        this.reportTabBounds = [];
-        this.currentReportTab = 0; // 重置当前选中的tab索引
-        this.moreButtonBounds = null; // 清空"查看更多"按钮区域
-        
-        console.log('✅ 已清空所有报告相关数据');
-        
-        // 重新渲染页面，显示空白报告状态
-        this.render();
-        
-        // 显示等待提示
-        wx.showToast({
-            title: '正在生成报告，请稍候...',
-            icon: 'loading',
-            duration: 2000
-        });
-        
-        // 启动特殊的刷新定时器
-        this.startPostQuizRefreshTimer();
+        try {
+            // 停止现有刷新机制
+            this.stopAllRefresh();
+            
+            // 清空之前的报告相关数据
+            this.myReport = null;
+            this.reportTabs = [];
+            this.reportTabBounds = [];
+            this.currentReportTab = 0;
+            this.moreButtonBounds = null;
+            
+            // 重新渲染页面，显示空白报告状态
+            this.render();
+            
+            // 显示等待提示
+            wx.showToast({
+                title: '正在生成报告，请稍候...',
+                icon: 'loading',
+                duration: 2000
+            });
+            
+            // 启动答题后的特殊刷新逻辑
+            await this.startPostQuizRefreshLogic();
+            
+            console.log('✅ 答题后Profile数据刷新完成');
+        } catch (error) {
+            console.error('❌ 答题后Profile数据刷新失败:', error);
+        }
     }
 
     /**
-     * 启动答题完成后的特殊刷新定时器
+     * 启动答题完成后的特殊刷新逻辑
      */
-    startPostQuizRefreshTimer() {
-        // 清理之前的定时器
-        if (this.postQuizRefreshTimer) {
-            clearInterval(this.postQuizRefreshTimer);
-        }
-        
+    async startPostQuizRefreshLogic() {
         let refreshCount = 0;
         const maxRefreshAttempts = 24; // 最多刷新2分钟（24次 * 5秒）
+        const refreshInterval = 5000; // 5秒间隔
         
-        this.postQuizRefreshTimer = setInterval(async () => {
-             refreshCount++;
-             console.log(`🔄 答题完成后第${refreshCount}次刷新报告数据...`);
-             
-             try {
-                 // 获取最新报告数据
-                 const myReport = await apiRequest('/report/my');
-                 console.log('🔍 API返回数据:', myReport);
-                 console.log('🔍 myReport.data:', myReport.data);
-                 console.log('🔍 数据类型:', typeof myReport.data);
-                 
-                 if (myReport.data && Object.keys(myReport.data).length > 0) {
-                     // 获取到新数据，停止刷新
-                     console.log('✅ 获取到最新报告数据，停止刷新');
-                     console.log('✅ 数据内容:', myReport.data);
-                     
-                     this.myReport = myReport.data;
-                     this.parseReportData();
-                     this.render();
-                     
-                     // 清理定时器
-                     clearInterval(this.postQuizRefreshTimer);
-                     this.postQuizRefreshTimer = null;
-                     
-                     // 显示成功提示
-                     wx.showToast({
-                         title: '报告生成完成！',
-                         icon: 'success',
-                         duration: 2000
-                     });
-                     
-                     // 重新启动常规的自动刷新
-                     this.startReportAutoRefresh();
-                     
-                 } else {
-                     // 接口成功但数据为空，认为报告还未生成，继续等待
-                     console.log('📝 接口返回成功但数据为空，报告可能还在生成中...');
-                     
-                     if (refreshCount >= maxRefreshAttempts) {
-                         // 达到最大刷新次数，停止刷新
-                         console.log('⚠️ 达到最大刷新次数，停止刷新');
-                         
-                         clearInterval(this.postQuizRefreshTimer);
-                         this.postQuizRefreshTimer = null;
-                         
-                         wx.showToast({
-                             title: '报告生成中，请稍后手动刷新',
-                             icon: 'none',
-                             duration: 3000
-                         });
-                         
-                         // 重新启动常规的自动刷新
-                         this.startReportAutoRefresh();
-                     }
-                 }
-                 
-             } catch (error) {
-                 // 接口报错，认为数据为空，继续刷新
-                 console.log('📝 接口报错，认为数据为空，继续等待...', error.message);
-                 
-                 if (refreshCount >= maxRefreshAttempts) {
-                     // 达到最大刷新次数且出错，停止刷新
-                     console.log('⚠️ 达到最大刷新次数且接口持续报错，停止刷新');
-                     
-                     clearInterval(this.postQuizRefreshTimer);
-                     this.postQuizRefreshTimer = null;
-                     
-                     wx.showToast({
-                         title: '获取报告失败，请检查网络',
-                         icon: 'none',
-                         duration: 3000
-                     });
-                     
-                     // 重新启动常规的自动刷新
-                     this.startReportAutoRefresh();
-                 }
-             }
-         }, 5000); // 每5秒刷新一次
-        
-        console.log('⏰ 答题完成后的报告刷新定时器已启动');
+        return new Promise((resolve) => {
+            const refreshTimer = setInterval(async () => {
+                // 检查Tab是否仍然激活
+                if (!this.isActive) {
+                    console.log('Tab已停用，停止答题后刷新');
+                    clearInterval(refreshTimer);
+                    resolve();
+                    return;
+                }
+                
+                refreshCount++;
+                console.log(`🔄 答题完成后第${refreshCount}次刷新报告数据...`);
+                
+                try {
+                    // 获取最新报告数据
+                    const myReport = await apiRequest('/report/my');
+                    
+                    if (myReport.data && Object.keys(myReport.data).length > 0) {
+                        // 获取到新数据，停止刷新
+                        console.log('✅ 获取到最新报告数据，停止刷新');
+                        
+                        this.myReport = myReport.data;
+                        this.parseReportData();
+                        this.render();
+                        
+                        // 清理定时器
+                        clearInterval(refreshTimer);
+                        
+                        // 显示成功提示
+                        wx.showToast({
+                            title: '报告生成完成！',
+                            icon: 'success',
+                            duration: 2000
+                        });
+                        
+                        // 重新启动智能刷新
+                        if (this.isActive) {
+                            this.startSmartRefresh();
+                        }
+                        
+                        resolve();
+                        
+                    } else {
+                        // 接口成功但数据为空，继续等待
+                        console.log('📝 报告可能还在生成中...');
+                        
+                        if (refreshCount >= maxRefreshAttempts) {
+                            // 达到最大刷新次数，停止刷新
+                            console.log('⚠️ 达到最大刷新次数，停止刷新');
+                            
+                            clearInterval(refreshTimer);
+                            
+                            wx.showToast({
+                                title: '报告生成中，请稍后手动刷新',
+                                icon: 'none',
+                                duration: 3000
+                            });
+                            
+                            // 重新启动智能刷新
+                            if (this.isActive) {
+                                this.startSmartRefresh();
+                            }
+                            
+                            resolve();
+                        }
+                    }
+                    
+                } catch (error) {
+                    // 接口报错，继续刷新
+                    console.log('📝 接口报错，继续等待...', error.message);
+                    
+                    if (refreshCount >= maxRefreshAttempts) {
+                        // 达到最大刷新次数且出错，停止刷新
+                        console.log('⚠️ 达到最大刷新次数且接口持续报错，停止刷新');
+                        
+                        clearInterval(refreshTimer);
+                        
+                        wx.showToast({
+                            title: '获取报告失败，请检查网络',
+                            icon: 'none',
+                            duration: 3000
+                        });
+                        
+                        // 重新启动智能刷新
+                        if (this.isActive) {
+                            this.startSmartRefresh();
+                        }
+                        
+                        resolve();
+                    }
+                }
+            }, refreshInterval);
+        });
     }
 
     /**
      * 销毁组件时清理资源
      */
     destroy() {
-        this.stopReportAutoRefresh();
-        
-        // 清理答题完成后的刷新定时器
-        if (this.postQuizRefreshTimer) {
-            clearInterval(this.postQuizRefreshTimer);
-            this.postQuizRefreshTimer = null;
-        }
+        this.stopAllRefresh();
         
         if (this.loginButton) {
             this.loginButton.destroy();

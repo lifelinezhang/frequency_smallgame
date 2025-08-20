@@ -28,6 +28,10 @@ export default class ShareTab {
         this.scrollY = 0; // 滚动偏移量
         this.maxScrollY = 0; // 最大滚动距离
         
+        // Tab生命周期状态
+        this.isActive = false;
+        this.isDataLoaded = false;
+        
         // 确保当前场景状态正确，防止意外触发答题完成流程
         this.ensureCorrectSceneState();
         
@@ -81,6 +85,7 @@ export default class ShareTab {
             this.unlockedReports = new Set(unlockedList.map(item => item.targetCustId));
             
             this.isLoading = false;
+            this.isDataLoaded = true;
             this.calculateMaxScroll();
             this.render();
             
@@ -93,6 +98,7 @@ export default class ShareTab {
         } catch (error) {
             console.error('加载分享数据失败:', error);
             this.isLoading = false;
+            this.isDataLoaded = false;
             this.render();
         }
     }
@@ -757,6 +763,66 @@ export default class ShareTab {
         return false;
     }
 
+    /**
+     * Tab激活生命周期方法
+     * 当Tab被激活时调用
+     */
+    onTabActivated() {
+        console.log('ShareTab 被激活');
+        this.isActive = true;
+        
+        const dataStore = DataStore.getInstance();
+        
+        // 检查是否需要刷新数据
+        if (dataStore.needsRefresh('share')) {
+            console.log('检测到需要刷新分享数据');
+            this.refreshAfterQuiz();
+            dataStore.clearRefreshFlag('share');
+        } else if (!this.isDataLoaded) {
+            // 首次加载
+            this.loadData();
+        }
+    }
+    
+    /**
+     * Tab停用生命周期方法
+     * 当Tab被停用时调用
+     */
+    onTabDeactivated() {
+        console.log('ShareTab 被停用');
+        this.isActive = false;
+    }
+    
+    /**
+     * 答题完成后的专用刷新方法
+     */
+    async refreshAfterQuiz() {
+        console.log('🔄 答题完成后刷新分享数据');
+        
+        try {
+            // 重置数据加载状态
+            this.isDataLoaded = false;
+            this.isLoading = true;
+            
+            // 清空现有数据
+            this.friendsList = [];
+            this.keyInfo = { keyCount: 0 };
+            this.unlockedReports.clear();
+            this.scrollY = 0;
+            this.maxScrollY = 0;
+            
+            // 重新渲染加载界面
+            this.render();
+            
+            // 重新加载数据
+            await this.loadData();
+            
+            console.log('✅ 答题后分享数据刷新完成');
+        } catch (error) {
+            console.error('❌ 答题后分享数据刷新失败:', error);
+        }
+    }
+    
     /**
      * 刷新数据
      */

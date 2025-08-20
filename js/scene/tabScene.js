@@ -49,51 +49,30 @@ export default class TabScene {
     switchTab(index) {
         console.log('切换到tab:', index);
         
-        // 停止之前tab的刷新循环（如果有的话）
+        // 获取之前的tab实例
         const previousTab = this.getTab(this.currentTab);
-        if (previousTab && typeof previousTab.stopRefreshLoop === 'function') {
-            console.log('停止之前tab的刷新循环');
-            previousTab.stopRefreshLoop();
+        const previousTabIndex = this.currentTab;
+        
+        // 调用之前tab的停用生命周期方法
+        if (previousTab && typeof previousTab.onTabDeactivated === 'function') {
+            console.log(`调用tab ${previousTabIndex} 的停用生命周期方法`);
+            previousTab.onTabDeactivated();
         }
         
+        // 更新当前tab索引
         this.currentTab = index;
         
-        // 确保tab已经初始化
+        // 确保新tab已经初始化
         const currentTab = this.getTab(index);
         
-        // 先显示当前tab（可能是加载界面）
+        // 先显示当前tab
         this.showCurrentTab();
         
-        // 如果是好友tab，每次进入都强制刷新数据
-        if (index === 0 && currentTab) {
-            console.log('进入好友tab，强制刷新数据');
-            // 异步刷新，避免阻塞界面显示
+        // 调用新tab的激活生命周期方法
+        if (currentTab && typeof currentTab.onTabActivated === 'function') {
+            console.log(`调用tab ${index} 的激活生命周期方法`);
             setTimeout(() => {
-                if (typeof currentTab.forceRefresh === 'function') {
-                    currentTab.forceRefresh();
-                } else if (typeof currentTab.loadFriends === 'function') {
-                    currentTab.loadFriends();
-                }
-            }, 50);
-        }
-        
-        // 如果是分享tab，每次进入都刷新数据
-        if (index === 1 && currentTab) {
-            console.log('进入分享tab，刷新数据');
-            setTimeout(() => {
-                if (typeof currentTab.refresh === 'function') {
-                    currentTab.refresh();
-                }
-            }, 50);
-        }
-        
-        // 如果是我的tab，重新启动自动刷新
-        if (index === 2 && currentTab) {
-            console.log('进入我的tab，启动自动刷新');
-            setTimeout(() => {
-                if (typeof currentTab.startReportAutoRefresh === 'function') {
-                    currentTab.startReportAutoRefresh();
-                }
+                currentTab.onTabActivated();
             }, 50);
         }
     }
@@ -135,6 +114,14 @@ export default class TabScene {
         // 使用setTimeout确保tab栏绘制完成后再绘制内容
         setTimeout(() => {
             this.showCurrentTab();
+            
+            // 调用初始tab的激活生命周期方法
+            const initialTab = this.getTab(this.currentTab);
+            if (initialTab && typeof initialTab.onTabActivated === 'function') {
+                console.log(`调用初始tab ${this.currentTab} 的激活生命周期方法`);
+                initialTab.onTabActivated();
+            }
+            
             console.log('TabScene内容绘制完成');
         }, 10);
         

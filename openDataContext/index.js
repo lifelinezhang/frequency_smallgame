@@ -969,9 +969,9 @@ wx.onMessage(data => {
             } else if (data.action === 'updateSimilarityRanking') {
                 console.log('🔄 接收到更新排行榜消息，开始处理...');
                 getFriendsSimilarityRanking();
-            } else if (data.action === 'forceRefresh') {
-                // 强制刷新排行榜显示
-                console.log('🔄 强制刷新排行榜显示');
+            } else if (data.action === 'updateRankings') {
+                // 更新排行榜显示
+                console.log('🔄 更新排行榜显示');
                 if (similarityRanking.length > 0) {
                     drawSimilarityRankingList();
                 } else {

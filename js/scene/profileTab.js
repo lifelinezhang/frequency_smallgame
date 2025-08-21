@@ -45,7 +45,7 @@ export default class ProfileTab {
         
         // 智能刷新相关属性
         this.reportRefreshTimer = null; // 智能刷新定时器ID
-        this.reportRefreshInterval = 10000; // 智能刷新间隔
+        this.reportRefreshInterval = 30000; // 智能刷新间隔
         this.isReportRefreshEnabled = false; // 是否启用自动刷新
         this.lastRefreshTime = 0; // 上次刷新时间
         this.isRefreshing = false; // 防止重复刷新标志

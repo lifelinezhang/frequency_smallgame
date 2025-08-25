@@ -352,9 +352,10 @@ GET /report/my
     "content": "",
     "totalCount": 0,
     "completionTime": "",
-    "isPublic": 0,
+    "isPublic": false,
     "viewCount": 0,
-    "createTime": ""
+    "createTime": "",
+    "isGenerator": false
   }
 }
 ```
@@ -394,9 +395,10 @@ GET /report/{reportId}
     "content": "",
     "totalCount": 0,
     "completionTime": "",
-    "isPublic": 0,
+    "isPublic": false,
     "viewCount": 0,
-    "createTime": ""
+    "createTime": "",
+    "isGenerator": false
   }
 }
 ```
@@ -425,7 +427,7 @@ POST /api/user/login
   "inviterOpenId": "string",
   "nickname": "string",
   "avatar": "string",
-  "gender": -127
+  "gender": 0
 }
 ```
 
@@ -926,7 +928,8 @@ GET /api/frequency/relation/{reportId}
   "msg": "",
   "data": {
     "frequency": "",
-    "report": ""
+    "report": "",
+    "isGenerator": false
   }
 }
 ```
@@ -1207,9 +1210,10 @@ GET /api/frequency/relation/{reportId}
   "content": "string",
   "totalCount": 0,
   "completionTime": "string",
-  "isPublic": -127,
+  "isPublic": true,
   "viewCount": 0,
-  "createTime": "string"
+  "createTime": "string",
+  "isGenerator": true
 }
 
 ```
@@ -1224,9 +1228,10 @@ GET /api/frequency/relation/{reportId}
 |content|string|false|none||报告内容|
 |totalCount|integer|false|none||总题目数|
 |completionTime|string|false|none||完成时间|
-|isPublic|integer|false|none||是否公开 0-私有 1-公开|
+|isPublic|boolean|false|none||是否公开 0-私有 1-公开|
 |viewCount|integer|false|none||查看次数|
 |createTime|string|false|none||创建时间|
+|isGenerator|boolean|false|none||是否正在生成|
 
 <h2 id="tocS_ResponseData">ResponseData</h2>
 
@@ -1270,9 +1275,10 @@ GET /api/frequency/relation/{reportId}
     "content": "string",
     "totalCount": 0,
     "completionTime": "string",
-    "isPublic": -127,
+    "isPublic": true,
     "viewCount": 0,
-    "createTime": "string"
+    "createTime": "string",
+    "isGenerator": true
   }
 }
 
@@ -1466,9 +1472,10 @@ GET /api/frequency/relation/{reportId}
       "content": "string",
       "totalCount": 0,
       "completionTime": "string",
-      "isPublic": -127,
+      "isPublic": true,
       "viewCount": 0,
-      "createTime": "string"
+      "createTime": "string",
+      "isGenerator": true
     }
   ]
 }
@@ -1497,7 +1504,7 @@ GET /api/frequency/relation/{reportId}
   "unionid": "string",
   "nickname": "string",
   "avatar": "string",
-  "gender": -127,
+  "gender": 0,
   "phone": "string",
   "token": "string"
 }
@@ -1534,7 +1541,7 @@ GET /api/frequency/relation/{reportId}
     "unionid": "string",
     "nickname": "string",
     "avatar": "string",
-    "gender": -127,
+    "gender": 0,
     "phone": "string",
     "token": "string"
   }
@@ -1596,7 +1603,7 @@ GET /api/frequency/relation/{reportId}
   "inviterOpenId": "string",
   "nickname": "string",
   "avatar": "string",
-  "gender": -127
+  "gender": 0
 }
 
 ```
@@ -1967,7 +1974,8 @@ GET /api/frequency/relation/{reportId}
 ```json
 {
   "frequency": "string",
-  "report": "string"
+  "report": "string",
+  "isGenerator": true
 }
 
 ```
@@ -1978,6 +1986,7 @@ GET /api/frequency/relation/{reportId}
 |---|---|---|---|---|---|
 |frequency|string|false|none||同频度|
 |report|string|false|none||报告详情|
+|isGenerator|boolean|false|none||none|
 
 <h2 id="tocS_ResponseDataListFrequencyRelationVO">ResponseDataListFrequencyRelationVO</h2>
 
@@ -2029,7 +2038,8 @@ GET /api/frequency/relation/{reportId}
   "msg": "string",
   "data": {
     "frequency": "string",
-    "report": "string"
+    "report": "string",
+    "isGenerator": true
   }
 }
 

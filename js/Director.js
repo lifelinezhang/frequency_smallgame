@@ -174,9 +174,6 @@ export default class Director {
         // 获取DataStore实例
         const dataStore = DataStore.getInstance();
         
-        // 设置答题完成状态标记，触发各Tab的刷新
-        dataStore.setQuizCompleted();
-        
         // 用户答案数据处理（已移除云存储功能）
         if (quizSession && quizSession.userAnswers) {
             console.log('✅ 获取到用户答案:', quizSession.userAnswers.length, '个答案');

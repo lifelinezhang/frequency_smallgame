@@ -771,16 +771,13 @@ export default class ShareTab {
         console.log('ShareTab 被激活');
         this.isActive = true;
         
-        const dataStore = DataStore.getInstance();
-        
-        // 检查是否需要刷新数据
-        if (dataStore.needsRefresh('share')) {
-            console.log('检测到需要刷新分享数据');
-            this.refreshAfterQuiz();
-            dataStore.clearRefreshFlag('share');
-        } else if (!this.isDataLoaded) {
+        // 统一使用智能刷新机制
+        if (!this.isDataLoaded) {
             // 首次加载
             this.loadData();
+        } else {
+            // 已加载过数据，启动智能刷新
+            this.refresh();
         }
     }
     
@@ -793,35 +790,7 @@ export default class ShareTab {
         this.isActive = false;
     }
     
-    /**
-     * 答题完成后的专用刷新方法
-     */
-    async refreshAfterQuiz() {
-        console.log('🔄 答题完成后刷新分享数据');
-        
-        try {
-            // 重置数据加载状态
-            this.isDataLoaded = false;
-            this.isLoading = true;
-            
-            // 清空现有数据
-            this.friendsList = [];
-            this.keyInfo = { keyCount: 0 };
-            this.unlockedReports.clear();
-            this.scrollY = 0;
-            this.maxScrollY = 0;
-            
-            // 重新渲染加载界面
-            this.render();
-            
-            // 重新加载数据
-            await this.loadData();
-            
-            console.log('✅ 答题后分享数据刷新完成');
-        } catch (error) {
-            console.error('❌ 答题后分享数据刷新失败:', error);
-        }
-    }
+
     
     /**
      * 刷新数据

@@ -44,6 +44,15 @@ export default class TabScene {
     switchTab(index) {
         console.log('切换到tab:', index);
         
+        // 确保当前画布状态正确
+        DataStore.getInstance().currentCanvas = 'tabScene';
+        
+        // 清理可能存在的答题会话状态，防止误触发自动跳转
+        const dataStore = DataStore.getInstance();
+        if (dataStore.quizSession) {
+            dataStore.quizSession.isProcessed = true;
+        }
+        
         // 获取之前的tab实例
         const previousTab = this.getTab(this.currentTab);
         const previousTabIndex = this.currentTab;
@@ -95,6 +104,9 @@ export default class TabScene {
      */
     init() {
         console.log('开始初始化TabScene...');
+        
+        // 设置当前画布状态为tabScene
+        DataStore.getInstance().currentCanvas = 'tabScene';
         
         // 清除画布
         this.ctx.clearRect(0, 0, screenWidth, screenHeight);

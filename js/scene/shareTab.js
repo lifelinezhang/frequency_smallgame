@@ -62,6 +62,12 @@ export default class ShareTab {
      */
     async loadData() {
         try {
+            // 检查tab是否激活，只有激活状态下才执行数据加载
+            if (!this.isActive) {
+                console.log('ShareTab未激活，跳过数据加载');
+                return;
+            }
+            
             this.isLoading = true;
             this.render();
             
@@ -74,8 +80,11 @@ export default class ShareTab {
             
             // 处理好友列表数据，转换为统一格式
             const rawFriendsList = friendsResponse.data || [];
+            console.log('原始好友列表数据:', rawFriendsList);
             this.friendsList = this.processFriendsData(rawFriendsList);
-             console.log('好友列表数据:', {
+            console.log('处理后好友列表数据:', {
+                原始数据长度: rawFriendsList.length,
+                处理后数据长度: this.friendsList.length,
                 friendsList: this.friendsList
             });
             this.keyInfo = keyResponse.data || { keyCount: 0 };
@@ -114,7 +123,11 @@ export default class ShareTab {
         const currentUserId = userInfo.id;
         console.log('当前用户信息:', userInfo);
         console.log('当前用户ID:', currentUserId);
-        return rawFriendsList.map(relation => {
+        
+        // 使用Map去重，以好友ID为key
+        const friendsMap = new Map();
+        
+        rawFriendsList.forEach(relation => {
              
             // 判断当前用户是firstCust还是secondCust，获取好友（对方）信息
             const isCurrentUserFirst = relation.firstCustId === currentUserId;
@@ -122,17 +135,25 @@ export default class ShareTab {
             const friendNickname = isCurrentUserFirst ? relation.secondCustNickname : relation.firstCustNickname;
             const friendAvatar = isCurrentUserFirst ? relation.secondCustAvatar : relation.firstCustAvatar;
             
-            return {
-                id: friendId,
-                openId: friendId, // 使用用户ID作为openId
-                nickName: friendNickname || '好友',
-                avatar: friendAvatar || '',
-                hasReport: relation.hasReport || false, // 是否有报告
-                reportId: relation.reportId || null, // 报告ID
-                relationId: relation.id,
-                isFriend: relation.isFriend || false
-            };
+            // 如果该好友ID还没有记录，或者当前关系的报告信息更完整，则更新
+            if (!friendsMap.has(friendId) || (relation.hasReport && !friendsMap.get(friendId).hasReport)) {
+                friendsMap.set(friendId, {
+                    id: friendId,
+                    openId: friendId, // 使用用户ID作为openId
+                    nickName: friendNickname || '好友',
+                    avatar: friendAvatar || '',
+                    hasReport: relation.hasReport || false, // 是否有报告
+                    reportId: relation.reportId || null, // 报告ID
+                    relationId: relation.id,
+                    isFriend: relation.isFriend || false
+                });
+            }
         });
+        
+        // 将Map转换为数组并返回
+        const uniqueFriends = Array.from(friendsMap.values());
+        console.log('去重前好友数量:', rawFriendsList.length, '去重后好友数量:', uniqueFriends.length);
+        return uniqueFriends;
     }
 
     /**

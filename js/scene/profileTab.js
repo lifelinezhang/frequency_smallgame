@@ -1807,6 +1807,22 @@ export default class ProfileTab {
         this.stopAllRefresh();
 
         this.isReportRefreshEnabled = true;
+        
+        console.log('智能刷新已启动，检查间隔: 2000ms，刷新间隔:', this.reportRefreshInterval + 'ms');
+        
+        // 立即执行第一次刷新
+        setTimeout(async () => {
+            try {
+                if (this.isActive && this.isLoggedIn && this.isReportRefreshEnabled) {
+                    console.log('智能刷新报告数据（首次）...');
+                    await this.refreshReportData();
+                    this.lastRefreshTime = Date.now();
+                }
+            } catch (error) {
+                console.error('首次智能刷新过程中发生错误:', error);
+            }
+        }, 100); // 100ms后执行首次刷新
+        
         this.reportRefreshTimer = setInterval(async () => {
             try {
                 // 检查Tab是否仍然激活
@@ -1829,8 +1845,6 @@ export default class ProfileTab {
                 this.stopAllRefresh();
             }
         }, 2000);
-
-        console.log('智能刷新已启动，检查间隔: 2000ms，刷新间隔:', this.reportRefreshInterval + 'ms');
     }
 
     /**
@@ -1877,6 +1891,12 @@ export default class ProfileTab {
      * 刷新报告数据
      */
     async refreshReportData() {
+        // 检查tab是否激活，只有激活状态下才执行刷新
+        if (!this.isActive) {
+            console.log('Tab未激活，跳过报告数据刷新');
+            return;
+        }
+        
         // 防止重复调用
         if (this.isRefreshing) {
             console.log('报告数据正在刷新中，跳过本次调用');

@@ -2,7 +2,6 @@
 import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
-import FriendsTab from './friendsTab';
 import ProfileTab from './profileTab';
 import ShareTab from './shareTab';
 
@@ -13,9 +12,8 @@ export default class TabScene {
     constructor(ctx) {
         this.ctx = ctx;
         this.canvas = DataStore.getInstance().canvas;
-        this.currentTab = 2; // 默认显示"我的"页面
+        this.currentTab = 1; // 默认显示"我的"页面
         this.tabs = [
-            null, // 好友tab
             null, // 分享tab
             null  // 我的tab
         ];
@@ -31,14 +29,11 @@ export default class TabScene {
         if (!this.tabs[index]) {
             switch(index) {
                 case 0:
-                    console.log('创建FriendsTab实例');
-                    this.tabs[index] = new FriendsTab(this.ctx);
-                    break;
-                case 1:
                     console.log('创建ShareTab实例');
                     this.tabs[index] = new ShareTab(this.ctx);
                     break;
-                case 2:
+                case 1:
+                    console.log('创建ProfileTab实例');
                     this.tabs[index] = new ProfileTab(this.ctx);
                     break;
             }
@@ -136,9 +131,9 @@ export default class TabScene {
      * 确保tab栏始终可见且样式清晰
      */
     drawTabBar() {
-        // 绘制底部tab栏（好友、分享、我的）
+        // 绘制底部tab栏（分享、我的）
         const tabHeight = 100;
-        const tabWidth = screenWidth / 3; // 3个tab，每个占三分之一宽度
+        const tabWidth = screenWidth / 2; // 2个tab，每个占一半宽度
         
         // 绘制tab栏背景
         this.ctx.fillStyle = '#f8f8f8';
@@ -153,8 +148,8 @@ export default class TabScene {
         this.ctx.stroke();
         
         // 绘制tab按钮
-        const tabNames = ['好友', '分享', '我的'];
-        for (let i = 0; i < 3; i++) {
+        const tabNames = ['分享', '我的'];
+        for (let i = 0; i < 2; i++) {
             const x = i * tabWidth;
             const y = screenHeight - tabHeight;
             
@@ -182,7 +177,7 @@ export default class TabScene {
             this.ctx.fillText(tabNames[i], x + tabWidth/2, y + tabHeight/2 + 5);
             
             // 绘制tab之间的分隔线
-            if (i < 2) {
+            if (i < 1) {
                 this.ctx.strokeStyle = '#e0e0e0';
                 this.ctx.lineWidth = 1;
                 this.ctx.beginPath();
@@ -191,7 +186,6 @@ export default class TabScene {
                 this.ctx.stroke();
             }
         }
-        
     }
 
     /**
@@ -237,11 +231,11 @@ export default class TabScene {
             
             console.log('TabScene 触摸开始事件:', x, y);
             
-            // 检查是否点击了tab栏（3个tab）
+            // 检查是否点击了tab栏（2个tab）
             if (y > screenHeight - 100) {
-                const tabIndex = Math.floor(x / (screenWidth / 3));
+                const tabIndex = Math.floor(x / (screenWidth / 2));
                 console.log('点击了tab:', tabIndex);
-                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 3) {
+                if (tabIndex !== this.currentTab && tabIndex >= 0 && tabIndex < 2) {
                     this.switchTab(tabIndex);
                 }
             } else {

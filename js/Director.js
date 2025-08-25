@@ -177,12 +177,11 @@ export default class Director {
         // 设置答题完成状态标记，触发各Tab的刷新
         dataStore.setQuizCompleted();
         
-        // 首先保存用户答案到云存储
+        // 用户答案数据处理（已移除云存储功能）
         if (quizSession && quizSession.userAnswers) {
-            console.log('✅ 获取到用户答案，准备保存到云存储:', quizSession.userAnswers.length, '个答案');
-            this.updateFriendsTabWithAnswers(quizSession.userAnswers);
+            console.log('✅ 获取到用户答案:', quizSession.userAnswers.length, '个答案');
         } else {
-            console.warn('⚠️ 未找到用户答案数据，无法保存到云存储');
+            console.warn('⚠️ 未找到用户答案数据');
         }
         
         // 隐藏之前的加载提示
@@ -231,14 +230,14 @@ export default class Director {
         let ctx = DataStore.getInstance().ctx;
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         
-        // 跳转到tab场景并切换到我的tab（索引为2）
+        // 跳转到tab场景并切换到我的tab（索引为1）
         if (this.tabScene) {
-            this.tabScene.switchTab(2); // 我的tab通常是索引2
+            this.tabScene.switchTab(1); // 我的tab的正确索引为1
             this.tabScene.resume();
         } else {
             this.showTabScene(ctx);
             if (this.tabScene) {
-                this.tabScene.switchTab(2);
+                this.tabScene.switchTab(1);
             }
         }
         
@@ -335,76 +334,7 @@ export default class Director {
         }
     }
     
-    /**
-     * 更新好友标签页的答案数据
-     * @param {Array} userAnswers - 用户答案数组
-     */
-    updateFriendsTabWithAnswers(userAnswers) {
-        try {
-            // 首先直接保存答案到云存储
-            this.saveAnswersDirectlyToCloud(userAnswers);
-            
-            // 然后尝试更新好友标签页（如果已初始化）
-            if (this.tabScene) {
-                // 确保好友标签页被创建
-                const friendsTab = this.tabScene.getTab(0);
-                if (friendsTab && typeof friendsTab.setUserAnswers === 'function') {
-                    console.log('✅ 更新好友标签页答案数据');
-                    friendsTab.setUserAnswers(userAnswers);
-                } else {
-                    console.warn('好友标签页未初始化或缺少setUserAnswers方法，但答案已直接保存到云存储');
-                }
-            } else {
-                console.warn('TabScene未初始化，但答案已直接保存到云存储');
-            }
-        } catch (error) {
-            console.error('更新好友标签页答案失败:', error);
-        }
-    }
-    
-    /**
-     * 直接保存答案到云存储
-     * @param {Array} userAnswers - 用户答案数组
-     */
-    saveAnswersDirectlyToCloud(userAnswers) {
-        if (userAnswers && userAnswers.length > 0) {
-            // 确保保存完整的答案数据结构
-            const completeAnswersData = {
-                answers: userAnswers, // 保存完整的答案对象数组
-                timestamp: Date.now(),
-                totalQuestions: userAnswers.length,
-                version: '1.0' // 添加版本号以便后续兼容性处理
-            };
-            
-            console.log('🚀 Director直接保存到云存储的答案数据:');
-            console.log('- 答案总数:', userAnswers.length);
-            console.log('- 完整数据结构:', completeAnswersData);
-            console.log('- 第一个答案示例:', userAnswers[0]);
-            console.log('- 最后一个答案示例:', userAnswers[userAnswers.length - 1]);
-            
-            // 通过开放数据域保存云存储数据
-            const openDataContext = wx.getOpenDataContext();
-            if (openDataContext) {
-                console.log('📤 Director通过开放数据域保存云存储数据');
-                openDataContext.postMessage({
-                    type: 'saveUserAnswers',
-                    data: {
-                        completeAnswers: JSON.stringify(completeAnswersData),
-                        answers: JSON.stringify(userAnswers.map(a => a.selectedOption)),
-                        timestamp: Date.now().toString(),
-                        totalQuestions: userAnswers.length.toString()
-                    }
-                });
-            } else {
-                console.warn('⚠️ Director无法获取开放数据域实例');
-            }
-        } else {
-            console.warn('Director无法保存答案到云存储：', {
-                hasAnswers: !!(userAnswers && userAnswers.length > 0),
-                answersLength: userAnswers ? userAnswers.length : 0
-            });
-        }
-    }
+
 
     // 添加返回TabScene的方法
     backToTabScene() {
@@ -425,14 +355,14 @@ export default class Director {
         
         // 恢复TabScene
         if (this.tabScene) {
-            // 设置当前tab为"我的"页面（ProfileTab的正确索引为2）
-            this.tabScene.currentTab = 2;
+            // 设置当前tab为"我的"页面（ProfileTab的正确索引为1）
+            this.tabScene.currentTab = 1;
             this.tabScene.resume();
         } else {
             this.showTabScene(ctx);
-            // 设置默认显示"我的"页面（ProfileTab的正确索引为2）
+            // 设置默认显示"我的"页面（ProfileTab的正确索引为1）
             if (this.tabScene) {
-                this.tabScene.currentTab = 2;
+                this.tabScene.currentTab = 1;
             }
         }
         

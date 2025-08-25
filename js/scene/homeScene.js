@@ -42,40 +42,13 @@ export default class HomeScene {
         // }
         if (DataStore.getInstance().shareTicket && !this.showGroup){
             this.showGroup = true;
-            this.messageSharecanvas('group', DataStore.getInstance().shareTicket);
-        }
-        if (this.ranking) {
-            // 子域canvas 放大绘制，这里必须限制子域画到上屏的宽高是screenWidth， screenHeight
-            DataStore.getInstance().ctx.drawImage(DataStore.getInstance().sharedCanvas, 0, 0, screenWidth, screenHeight);
         }
         this.requestId = requestAnimationFrame(this.loop.bind(this));
     }
-    messageSharecanvas (type, text) {
-        // 排行榜也应该是实时的，所以需要sharedCanvas 绘制新的排行榜
-        let openDataContext = wx.getOpenDataContext();
-        openDataContext.postMessage({
-            type: type || 'friends',
-            text: text,
-        });
-        this.ranking = true;
-    }
+
   bindEvent () {
       let _this = this;
       wx.offTouchStart();
-      if (this.ranking) {
-        wx.onTouchStart((e) => {
-          let x = e.touches[0].clientX,
-            y = e.touches[0].clientY;
-            let scale = screenWidth/750;
-          if (x >= 80*scale && x <= 180*scale && y >=1120*scale && y <= 12200*scale) {// 返回按钮
-              _this.ranking = false;
-              setTimeout(()=>{
-                  cancelAnimationFrame(_this.requestId);
-              }, 20);
-          }
-        }); 
-        return;
-      }
       wx.onTouchStart((e) => {
           let x = e.touches[0].clientX,
               y = e.touches[0].clientY;
@@ -85,14 +58,6 @@ export default class HomeScene {
             && y <= _this.startSprite.y + _this.startSprite.height) {
                 cancelAnimationFrame(_this.requestId);
                 DataStore.getInstance().director.toQuestionScene(_this.ctx);   
-          } else if (x >= _this.rankSprite.x
-              && x <= _this.rankSprite.x + _this.rankSprite.width
-              && y >= _this.rankSprite.y
-              && y <= _this.rankSprite.y + _this.rankSprite.height) {
-                // 排行榜也应该是实时的，所以需要sharedCanvas 绘制新的排行榜
-              _this.messageSharecanvas();
-              _this.loop();
-              wx.offTouchStart(); // 在分享canvas还是会响应事件，所以先解除事件绑定
           }
       });
   }

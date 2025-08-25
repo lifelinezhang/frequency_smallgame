@@ -15,11 +15,7 @@ export default class Main {
         canvas.height = screenHeight * ratio;
         this.ctx.scale(ratio,ratio);
 
-        let openDataContext = wx.getOpenDataContext();
-        let sharedCanvas = openDataContext.canvas;
-        sharedCanvas.width = screenWidth * ratio;
-        sharedCanvas.height = screenHeight * ratio;
-        DataStore.getInstance().sharedCanvas = sharedCanvas;
+
 
         this.dataStore = DataStore.getInstance();
         this.director = Director.getInstance();

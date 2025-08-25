@@ -267,8 +267,8 @@ export default class ResultScene {
         const buttonHeight = 50;
         const buttonSpacing = 30;
         
-        // 计算按钮起始位置
-        const totalWidth = buttonWidth * 3 + buttonSpacing * 2;
+        // 计算按钮起始位置（只有2个按钮）
+        const totalWidth = buttonWidth * 2 + buttonSpacing;
         const startX = (750 - totalWidth) / 2;
         
         // 排行榜按钮
@@ -280,18 +280,8 @@ export default class ResultScene {
             height: buttonHeight * (screenWidth / 750)
         };
         
-        // 好友圈按钮
-        const friendsX = startX + buttonWidth + buttonSpacing;
-        this.drawModernButton(friendsX, buttonY, buttonWidth, buttonHeight, '好友圈', '#28a745', '#1e7e34');
-        this.friendsSprite = {
-            x: friendsX * (screenWidth / 750),
-            y: buttonY * (screenWidth / 750),
-            width: buttonWidth * (screenWidth / 750),
-            height: buttonHeight * (screenWidth / 750)
-        };
-        
         // 重新开始按钮
-        const restartX = friendsX + buttonWidth + buttonSpacing;
+        const restartX = startX + buttonWidth + buttonSpacing;
         this.drawModernButton(restartX, buttonY, buttonWidth, buttonHeight, '重新开始', '#dc3545', '#c82333');
         this.restartSprite = {
             x: restartX * (screenWidth / 750),
@@ -419,12 +409,7 @@ export default class ResultScene {
                 y >= _this.rankSprite.y && y <= _this.rankSprite.y + _this.rankSprite.height) {
                 _this.report();
             }
-            // 检查好友圈按钮
-            else if (_this.friendsSprite &&
-                x >= _this.friendsSprite.x && x <= _this.friendsSprite.x + _this.friendsSprite.width &&
-                y >= _this.friendsSprite.y && y <= _this.friendsSprite.y + _this.friendsSprite.height) {
-                _this.goToFriendsTab();
-            }
+
             // 检查重新开始按钮
             else if (_this.restartSprite &&
                 x >= _this.restartSprite.x && x <= _this.restartSprite.x + _this.restartSprite.width &&
@@ -651,45 +636,7 @@ export default class ResultScene {
         director.backToTabScene();
     }
     
-    /**
-     * 跳转到好友tab
-     * 直接切换到TabScene的好友排行榜页面
-     */
-    goToFriendsTab() {
-        // 停止当前循环
-        if (this.requestId) {
-            cancelAnimationFrame(this.requestId);
-        }
-        
-        // 解除事件绑定
-        wx.offTouchStart();
-        
-        // 获取Director实例
-        const Director = require('../Director').default;
-        const director = Director.getInstance();
-        
-        // 清除画布
-        let ctx = DataStore.getInstance().ctx;
-        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-        
-        // 恢复或创建TabScene
-        if (director.tabScene) {
-            // 切换到好友tab（隐藏推荐tab后，索引变为0）
-            director.tabScene.switchTab(0);
-            director.tabScene.resume();
-        } else {
-            director.showTabScene(ctx);
-            // 设置默认显示好友tab（隐藏推荐tab后，索引变为0）
-            if (director.tabScene) {
-                director.tabScene.switchTab(0);
-            }
-        }
-        
-        // 更新当前画布状态
-        DataStore.getInstance().currentCanvas = 'tabScene';
-        
-        console.log('已跳转到好友tab');
-    }
+
     
     /**
      * 生成简洁的分享报告

@@ -1,9 +1,5 @@
 // 控制游戏逻辑
-import HomeScene from './scene/homeScene';
 import QuestionScene from './scene/questionScene';
-// 移除Question类的导入
-// import Question from './player/question';  // 删除这行
-import ResultScene from './scene/resultScene';
 import DataStore from './base/DataStore';
 import TabScene from './scene/tabScene';
 import { getAnswerHistory, getFriendsList, getFrequencyReport, getMyReport } from './utils/api';
@@ -51,10 +47,7 @@ export default class Director {
             console.log('TabScene创建成功，当前tab:', this.tabScene.currentTab);
         }
     }
-    // 首页场景
-    showHomeScene (ctx) {
-        this.homeScene = new HomeScene(ctx);
-    }
+
 
     /**
      * 显示答题场景
@@ -132,24 +125,7 @@ export default class Director {
     }
     // 结果场景
     // 结果场景
-    showResultScene () {
-        // 答题完成，处理用户答案
-        this.handleQuizCompletion();
-        
-        this.resultCanvas = wx.createCanvas();
-        let resultCtx = this.resultCanvas.getContext('2d');
-        this.resultCanvas.width = screenWidth * ratio;
-        this.resultCanvas.height = screenHeight * ratio;
-        let scales = screenWidth / 750;
-        resultCtx.scale(ratio, ratio);
-    
-        resultCtx.scale(scales, scales);
-    
-        DataStore.getInstance().resultCanvas = this.resultCanvas;
-        new ResultScene(resultCtx);
-    
-        DataStore.getInstance().currentCanvas = 'resultCanvas';
-    }
+
     
     /**
      * 处理答题完成后的逻辑

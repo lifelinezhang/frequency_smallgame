@@ -41,10 +41,13 @@ export default class Main {
      * 设置分享功能
      */
     setShare () {
+        // 设置分享菜单，支持转发和朋友圈分享
         wx.showShareMenu({
             withShareTicket: true,
+            menus: ['shareAppMessage', 'shareTimeline']
         });
         
+        // 设置转发给好友的分享内容
         wx.onShareAppMessage(() => {
             // 生成带有邀请者信息的分享配置
             const shareConfig = generateShareConfig({
@@ -74,6 +77,15 @@ export default class Main {
                 fail: (res) => {
                     console.error('分享失败:', res);
                 }
+            };
+        });
+        
+        // 设置分享到朋友圈的内容
+        wx.onShareTimeline(() => {
+            return {
+                title: '快来挑战频率小游戏，测试你的反应速度！',
+                query: 'from=timeline',
+                imageUrl: 'https://mtshop1.meitudata.com/5ad58b143a94621047.jpg'
             };
         });
     }

@@ -515,10 +515,18 @@ export default class ShareTab {
      * @param {number} y - Y坐标
      */
     async handleTouch(x, y) {
-        // 如果正在显示报告详情，检查返回按钮
-        if (this._showingReport && this.checkBackButton(x, y)) {
-            this.handleBack();
-            return;
+        // 如果正在显示报告详情
+        if (this._showingReport) {
+            // 检查返回按钮
+            if (this.checkBackButton(x, y)) {
+                this.handleBack();
+                return;
+            }
+            
+            // 检查分享按钮
+            if (this.checkShareButtons(x, y)) {
+                return;
+            }
         }
         
         // 调整Y坐标考虑滚动偏移
@@ -683,6 +691,9 @@ export default class ShareTab {
             });
         }
         
+        // 绘制分享按钮区域
+        this.drawShareButtons();
+        
         // 存储返回按钮区域
         this._backButtonArea = {
             x: 20,
@@ -690,6 +701,10 @@ export default class ShareTab {
             width: 60,
             height: 30
         };
+        
+        // 存储当前报告数据用于分享
+        this._currentReportData = reportData;
+        this._currentFriend = friend;
         
         this._showingReport = true;
     }
@@ -896,11 +911,243 @@ export default class ShareTab {
     }
 
     /**
-     * 销毁组件
+     * 绘制分享按钮
      */
-    destroy() {
-        // 清理资源
-        this.friendsList = [];
-        this.unlockedReports.clear();
+    drawShareButtons() {
+        const buttonWidth = 80;
+        const buttonHeight = 35;
+        const buttonSpacing = 20;
+        const startY = window.innerHeight - 200;
+        const centerX = window.innerWidth / 2;
+        
+        // 计算三个按钮的起始X坐标
+        const totalWidth = buttonWidth * 3 + buttonSpacing * 2;
+        const startX = centerX - totalWidth / 2;
+        
+        // 分享到朋友圈按钮
+        this.ctx.fillStyle = '#1AAD19';
+        this.ctx.fillRect(startX, startY, buttonWidth, buttonHeight);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('朋友圈', startX + buttonWidth/2, startY + 22);
+        
+        // 转发给好友按钮
+        this.ctx.fillStyle = '#007AFF';
+        this.ctx.fillRect(startX + buttonWidth + buttonSpacing, startY, buttonWidth, buttonHeight);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText('转发好友', startX + buttonWidth + buttonSpacing + buttonWidth/2, startY + 22);
+        
+        // 保存图片按钮
+        this.ctx.fillStyle = '#FF9500';
+        this.ctx.fillRect(startX + (buttonWidth + buttonSpacing) * 2, startY, buttonWidth, buttonHeight);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText('保存图片', startX + (buttonWidth + buttonSpacing) * 2 + buttonWidth/2, startY + 22);
+        
+        // 存储按钮区域信息
+        this._shareButtonAreas = {
+            timeline: {
+                x: startX,
+                y: startY,
+                width: buttonWidth,
+                height: buttonHeight
+            },
+            friend: {
+                x: startX + buttonWidth + buttonSpacing,
+                y: startY,
+                width: buttonWidth,
+                height: buttonHeight
+            },
+            save: {
+                x: startX + (buttonWidth + buttonSpacing) * 2,
+                y: startY,
+                width: buttonWidth,
+                height: buttonHeight
+            }
+        };
     }
-}
+    
+    /**
+     * 检查分享按钮点击
+     * @param {number} x - 点击的X坐标
+     * @param {number} y - 点击的Y坐标
+     * @returns {boolean} 是否点击了分享按钮
+     */
+    checkShareButtons(x, y) {
+        if (!this._shareButtonAreas) return false;
+        
+        // 检查朋友圈按钮
+        const timelineBtn = this._shareButtonAreas.timeline;
+        if (x >= timelineBtn.x && x <= timelineBtn.x + timelineBtn.width &&
+            y >= timelineBtn.y && y <= timelineBtn.y + timelineBtn.height) {
+            this.shareToTimeline();
+            return true;
+        }
+        
+        // 检查转发好友按钮
+        const friendBtn = this._shareButtonAreas.friend;
+        if (x >= friendBtn.x && x <= friendBtn.x + friendBtn.width &&
+            y >= friendBtn.y && y <= friendBtn.y + friendBtn.height) {
+            this.shareToFriend();
+            return true;
+        }
+        
+        // 检查保存图片按钮
+        const saveBtn = this._shareButtonAreas.save;
+        if (x >= saveBtn.x && x <= saveBtn.x + saveBtn.width &&
+            y >= saveBtn.y && y <= saveBtn.y + saveBtn.height) {
+            this.saveImage();
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+      * 分享到朋友圈
+      */
+     async shareToTimeline() {
+         try {
+             // 首先设置分享菜单
+             await wx.showShareMenu({
+                 withShareTicket: false,
+                 menus: ['shareTimeline']
+             });
+             
+             // 生成分享图片
+             const imageUrl = await this.generateShareImage();
+             
+             // 设置朋友圈分享内容
+             wx.onShareTimeline(() => {
+                 return {
+                     title: `我和${this._currentFriend.nickName}的同频度是${this._currentReportData.frequency}%！`,
+                     imageUrl: imageUrl,
+                     query: 'from=timeline'
+                 };
+             });
+             
+             this.showMessage('已设置朋友圈分享，请点击右上角菜单分享');
+         } catch (error) {
+             console.error('分享到朋友圈失败:', error);
+             this.showMessage('分享功能暂不可用');
+         }
+     }
+     
+     /**
+      * 转发给好友
+      */
+     async shareToFriend() {
+         try {
+             // 生成分享图片
+             const imageUrl = await this.generateShareImage();
+             
+             // 调用分享接口
+             await wx.shareAppMessage({
+                 title: `我和${this._currentFriend.nickName}的同频度是${this._currentReportData.frequency}%！`,
+                 desc: '快来测试你们的同频度吧！',
+                 imageUrl: imageUrl,
+                 query: 'from=friend'
+             });
+         } catch (error) {
+             console.error('转发给好友失败:', error);
+             this.showMessage('分享功能暂不可用');
+         }
+     }
+     
+     /**
+      * 保存图片到本地
+      */
+     async saveImage() {
+         try {
+             // 生成分享图片
+             const imageUrl = await this.generateShareImage();
+             
+             // 调用海报分享接口
+             await wx.showShareImageMenu({
+                 path: imageUrl
+             });
+         } catch (error) {
+             console.error('保存图片失败:', error);
+             this.showMessage('保存功能暂不可用');
+         }
+     }
+     
+     /**
+      * 生成分享图片
+      * @returns {Promise<string>} 图片临时路径
+      */
+     async generateShareImage() {
+         try {
+             // 创建离屏Canvas用于生成分享图片
+             const canvas = wx.createCanvas();
+             const ctx = canvas.getContext('2d');
+             
+             // 设置Canvas尺寸（5:4比例，适合分享）
+             canvas.width = 400;
+             canvas.height = 320;
+             
+             // 绘制背景
+             ctx.fillStyle = '#f8f9fa';
+             ctx.fillRect(0, 0, canvas.width, canvas.height);
+             
+             // 绘制标题
+             ctx.fillStyle = '#333333';
+             ctx.font = 'bold 18px Arial';
+             ctx.textAlign = 'center';
+             ctx.fillText('同频报告', canvas.width/2, 40);
+             
+             // 绘制好友信息
+             ctx.font = '16px Arial';
+             ctx.fillText(`与${this._currentFriend.nickName}的同频度`, canvas.width/2, 80);
+             
+             // 绘制同频度
+             ctx.fillStyle = '#007AFF';
+             ctx.font = 'bold 48px Arial';
+             ctx.fillText(`${this._currentReportData.frequency}%`, canvas.width/2, 150);
+             
+             // 绘制报告摘要（截取前100字符）
+             if (this._currentReportData.report) {
+                 ctx.fillStyle = '#666666';
+                 ctx.font = '12px Arial';
+                 ctx.textAlign = 'left';
+                 
+                 const summary = this._currentReportData.report.substring(0, 100) + '...';
+                 const lines = this.wrapText(summary, canvas.width - 40);
+                 lines.forEach((line, index) => {
+                     if (index < 4) { // 最多显示4行
+                         ctx.fillText(line, 20, 190 + index * 16);
+                     }
+                 });
+             }
+             
+             // 绘制底部信息
+             ctx.fillStyle = '#999999';
+             ctx.font = '10px Arial';
+             ctx.textAlign = 'center';
+             ctx.fillText('来自同频小游戏', canvas.width/2, canvas.height - 20);
+             
+             // 转换为临时文件
+             return await new Promise((resolve, reject) => {
+                 canvas.toTempFilePath({
+                     success: (res) => resolve(res.tempFilePath),
+                     fail: reject
+                 });
+             });
+         } catch (error) {
+             console.error('生成分享图片失败:', error);
+             throw error;
+         }
+     }
+
+     /**
+      * 销毁组件
+      */
+     destroy() {
+         // 清理资源
+         this.friendsList = [];
+         this.unlockedReports.clear();
+         this._shareButtonAreas = null;
+         this._currentReportData = null;
+         this._currentFriend = null;
+     }
+ }

@@ -2,7 +2,7 @@ import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
 import {
-    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest
+    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest, getWechatAccessToken
 } from '../utils/api';
 
 /**
@@ -1122,7 +1122,6 @@ export default class ShareTab {
      * @returns {Promise<string>} 图片临时路径
      */
     async generateShareImage() {
-        // return 'https://samefrequency-1312404177.cos.ap-shanghai.myqcloud.com/sample-template.png';
         try {
             // 创建离屏Canvas用于生成分享图片
             const canvas = wx.createCanvas();
@@ -1198,7 +1197,7 @@ export default class ShareTab {
     async drawQRCode(ctx, x, y, size) {
         try {
             // 首先获取微信AccessToken
-            const accessToken = await this.getWechatAccessToken();
+            const accessToken = await getWechatAccessToken();
             
             if (!accessToken) {
                 console.warn('获取AccessToken失败，使用备用方案');
@@ -1217,7 +1216,7 @@ export default class ShareTab {
                         'content-type': 'application/json'
                     },
                     data: {
-                        scene: 'a=1', // 场景值，用于标识分享来源
+                        scene: this.getCurrentUserScene(), // 场景值，用于标识分享来源
                         // 注意：小游戏不需要page参数，因为小游戏只有一个入口
                         width: size * 2, // 二维码宽度，设置为显示尺寸的2倍以提高清晰度
                         auto_color: false,
@@ -1245,26 +1244,31 @@ export default class ShareTab {
     }
 
     /**
+     * 获取当前用户的scene参数
+     * @returns {string} 包含当前用户openid的scene字符串
+     */
+    getCurrentUserScene() {
+        try {
+            // 从本地存储获取用户信息
+            const userInfo = wx.getStorageSync('userInfo');
+            
+            if (userInfo && userInfo.openid) {
+                return `openid=${userInfo.openid}`;
+            } else {
+                console.warn('未找到用户openid，使用默认值');
+                return 'openid=default';
+            }
+        } catch (error) {
+            console.error('获取用户openid失败:', error);
+            return 'openid=error';
+        }
+    }
+
+    /**
      * 获取微信AccessToken
      * @returns {Promise<string|null>} AccessToken或null
      */
-    async getWechatAccessToken() {
-        try {
-            const response = await apiRequest('/api/share/wechat/access-token', {
-                method: 'GET'
-            });
-            
-            if (response && response.data) {
-                return response.data;
-            } else {
-                console.error('获取AccessToken失败: 响应数据为空');
-                return null;
-            }
-        } catch (error) {
-            console.error('请求AccessToken接口失败:', error);
-            return null;
-        }
-    }
+
     
     /**
      * 从二进制数据绘制二维码

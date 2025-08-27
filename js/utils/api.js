@@ -237,3 +237,25 @@ export const getFriendReportDetail = async (reportId) => {
         method: 'GET'
     });
 };
+
+/**
+ * 获取微信小程序AccessToken
+ * @returns {Promise<string|null>} AccessToken或null
+ */
+export const getWechatAccessToken = async () => {
+    try {
+        const response = await apiRequest('/api/share/wechat/access-token', {
+            method: 'GET'
+        });
+        
+        if (response && response.data) {
+            return response.data;
+        } else {
+            console.error('获取AccessToken失败: 响应数据为空');
+            return null;
+        }
+    } catch (error) {
+        console.error('请求AccessToken接口失败:', error);
+        return null;
+    }
+};

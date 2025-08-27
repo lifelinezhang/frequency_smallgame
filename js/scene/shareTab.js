@@ -2,7 +2,7 @@ import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
 import {
-    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus
+    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest
 } from '../utils/api';
 
 /**
@@ -1122,67 +1122,327 @@ export default class ShareTab {
      * @returns {Promise<string>} 图片临时路径
      */
     async generateShareImage() {
-        return 'https://samefrequency-1312404177.cos.ap-shanghai.myqcloud.com/sample-template.png';
-        // try {
-        //     // 创建离屏Canvas用于生成分享图片
-        //     const canvas = wx.createCanvas();
-        //     const ctx = canvas.getContext('2d');
-        //
-        //     // 设置Canvas尺寸（5:4比例，适合分享）
-        //     canvas.width = 400;
-        //     canvas.height = 320;
-        //
-        //     // 绘制背景
-        //     ctx.fillStyle = '#f8f9fa';
-        //     ctx.fillRect(0, 0, canvas.width, canvas.height);
-        //
-        //     // 绘制标题
-        //     ctx.fillStyle = '#333333';
-        //     ctx.font = 'bold 18px Arial';
-        //     ctx.textAlign = 'center';
-        //     ctx.fillText('同频报告', canvas.width/2, 40);
-        //
-        //     // 绘制好友信息
-        //     ctx.font = '16px Arial';
-        //     ctx.fillText(`与${this._currentFriend.nickName}的同频度`, canvas.width/2, 80);
-        //
-        //     // 绘制同频度
-        //     ctx.fillStyle = '#007AFF';
-        //     ctx.font = 'bold 48px Arial';
-        //     ctx.fillText(`${this._currentReportData.frequency}%`, canvas.width/2, 150);
-        //
-        //     // 绘制报告摘要（截取前100字符）
-        //     if (this._currentReportData.report) {
-        //         ctx.fillStyle = '#666666';
-        //         ctx.font = '12px Arial';
-        //         ctx.textAlign = 'left';
-        //
-        //         const summary = this._currentReportData.report.substring(0, 100) + '...';
-        //         const lines = this.wrapTextWithContext(ctx, summary, canvas.width - 40);
-        //         lines.forEach((line, index) => {
-        //             if (index < 4) { // 最多显示4行
-        //                 ctx.fillText(line, 20, 190 + index * 16);
-        //             }
-        //         });
-        //     }
-        //
-        //     // 绘制底部信息
-        //     ctx.fillStyle = '#999999';
-        //     ctx.font = '10px Arial';
-        //     ctx.textAlign = 'center';
-        //     ctx.fillText('来自同频小游戏', canvas.width/2, canvas.height - 20);
-        //
-        //     // 转换为临时文件
-        //     return await new Promise((resolve, reject) => {
-        //         canvas.toTempFilePath({
-        //             success: (res) => resolve(res.tempFilePath),
-        //             fail: reject
-        //         });
-        //     });
-        // } catch (error) {
-        //     console.error('生成分享图片失败:', error);
-        //     throw error;
-        // }
+        // return 'https://samefrequency-1312404177.cos.ap-shanghai.myqcloud.com/sample-template.png';
+        try {
+            // 创建离屏Canvas用于生成分享图片
+            const canvas = wx.createCanvas();
+            const ctx = canvas.getContext('2d');
+
+            // 设置Canvas尺寸（增加高度以容纳二维码）
+            canvas.width = 400;
+            canvas.height = 420; // 增加100px高度用于二维码
+
+            // 绘制背景
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制标题
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('同频报告', canvas.width/2, 40);
+
+            // 绘制好友信息
+            ctx.font = '16px Arial';
+            ctx.fillText(`与${this._currentFriend.nickName}的同频度`, canvas.width/2, 80);
+
+            // 绘制同频度
+            ctx.fillStyle = '#007AFF';
+            ctx.font = 'bold 48px Arial';
+            ctx.fillText(`${this._currentReportData.frequency}%`, canvas.width/2, 150);
+
+            // 绘制报告摘要（截取前100字符）
+            if (this._currentReportData.report) {
+                ctx.fillStyle = '#666666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+
+                const summary = this._currentReportData.report.substring(0, 100) + '...';
+                const lines = this.wrapTextWithContext(ctx, summary, canvas.width - 40);
+                lines.forEach((line, index) => {
+                    if (index < 4) { // 最多显示4行
+                        ctx.fillText(line, 20, 190 + index * 16);
+                    }
+                });
+            }
+
+            // 绘制底部信息
+            ctx.fillStyle = '#999999';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('来自同频小游戏', canvas.width/2, 300);
+
+            // 绘制二维码区域
+            await this.drawQRCode(ctx, canvas.width/2 - 40, 330, 80);
+
+            // 转换为临时文件
+            return await new Promise((resolve, reject) => {
+                canvas.toTempFilePath({
+                    success: (res) => resolve(res.tempFilePath),
+                    fail: reject
+                });
+            });
+        } catch (error) {
+            console.error('生成分享图片失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 绘制二维码
+     * @param {CanvasRenderingContext2D} ctx - 画布上下文
+     * @param {number} x - 二维码左上角x坐标
+     * @param {number} y - 二维码左上角y坐标
+     * @param {number} size - 二维码尺寸
+     */
+    async drawQRCode(ctx, x, y, size) {
+        try {
+            // 首先获取微信AccessToken
+            const accessToken = await this.getWechatAccessToken();
+            
+            if (!accessToken) {
+                console.warn('获取AccessToken失败，使用备用方案');
+                this.drawFallbackQRCode(ctx, x, y, size);
+                return;
+            }
+
+            // 使用微信小程序 wxacode.getUnlimited 方法生成小程序码
+            const apiUrl = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
+            
+            const result = await new Promise((resolve, reject) => {
+                wx.request({
+                    url: apiUrl,
+                    method: 'POST',
+                    header: {
+                        'content-type': 'application/json'
+                    },
+                    data: {
+                        scene: 'a=1', // 场景值，用于标识分享来源
+                        // 注意：小游戏不需要page参数，因为小游戏只有一个入口
+                        width: size * 2, // 二维码宽度，设置为显示尺寸的2倍以提高清晰度
+                        auto_color: false,
+                        line_color: {"r":0,"g":0,"b":0}, // 黑色线条
+                        is_hyaline: false
+                    },
+                    responseType: 'arraybuffer',
+                    success: resolve,
+                    fail: reject
+                });
+            });
+            
+            if (result.statusCode === 200 && result.data) {
+                await this.drawQRCodeFromBuffer(ctx, x, y, size, result.data);
+                return;
+            } else {
+                throw new Error(`生成小程序码失败: ${result.statusCode}`);
+            }
+            
+        } catch (error) {
+            console.error('生成小程序码失败，使用备用方案:', error);
+            // 如果API调用失败，使用手绘二维码作为备用方案
+            this.drawFallbackQRCode(ctx, x, y, size);
+        }
+    }
+
+    /**
+     * 获取微信AccessToken
+     * @returns {Promise<string|null>} AccessToken或null
+     */
+    async getWechatAccessToken() {
+        try {
+            const response = await apiRequest('/api/share/wechat/access-token', {
+                method: 'GET'
+            });
+            
+            if (response && response.data) {
+                return response.data;
+            } else {
+                console.error('获取AccessToken失败: 响应数据为空');
+                return null;
+            }
+        } catch (error) {
+            console.error('请求AccessToken接口失败:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * 从二进制数据绘制二维码
+     * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+     * @param {number} x - 二维码左上角x坐标
+     * @param {number} y - 二维码左上角y坐标
+     * @param {number} size - 二维码尺寸
+     * @param {ArrayBuffer} buffer - 二维码图片数据
+     */
+    async drawQRCodeFromBuffer(ctx, x, y, size, buffer) {
+        try {
+            console.log('开始处理二维码数据，数据大小:', buffer.byteLength);
+            
+            // 检查数据是否为有效的图片数据
+            if (!buffer || buffer.byteLength === 0) {
+                throw new Error('二维码数据为空');
+            }
+            
+            // 将ArrayBuffer转换为Uint8Array
+            const uint8Array = new Uint8Array(buffer);
+            
+            // 检查图片格式
+            // PNG文件头：89 50 4E 47
+            const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && 
+                         uint8Array[2] === 0x4E && uint8Array[3] === 0x47;
+            
+            // JPEG文件头：FF D8 FF
+            const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8 && uint8Array[2] === 0xFF;
+            
+            if (!isPNG && !isJPEG) {
+                console.warn('返回的数据不是PNG或JPEG格式，尝试作为错误信息解析');
+                // 尝试将数据作为文本解析，可能是错误信息
+                const decoder = new TextDecoder('utf-8');
+                const errorText = decoder.decode(buffer);
+                console.error('微信API返回错误:', errorText);
+                throw new Error('微信API返回的不是图片数据: ' + errorText);
+            }
+            
+            // 根据图片格式确定文件扩展名
+            const fileExtension = isPNG ? 'png' : 'jpg';
+            console.log('检测到图片格式:', fileExtension.toUpperCase());
+            
+            // 将返回的图片数据转换为临时文件
+            const tempFilePath = await new Promise((resolve, reject) => {
+                const fs = wx.getFileSystemManager();
+                const tempPath = `${wx.env.USER_DATA_PATH}/qrcode_${Date.now()}.${fileExtension}`;
+                
+                console.log('写入临时文件:', tempPath);
+                
+                fs.writeFile({
+                    filePath: tempPath,
+                    data: buffer,
+                    success: () => {
+                        console.log('临时文件写入成功');
+                        resolve(tempPath);
+                    },
+                    fail: (err) => {
+                        console.error('写入临时文件失败:', err);
+                        reject(err);
+                    }
+                });
+            });
+            
+            // 创建图片对象并绘制到Canvas
+            const image = wx.createImage();
+            await new Promise((resolve, reject) => {
+                image.onload = () => {
+                    console.log('二维码图片加载成功，尺寸:', image.width, 'x', image.height);
+                    
+                    // 绘制白色背景
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(x, y, size, size);
+                    
+                    // 绘制二维码图片
+                    ctx.drawImage(image, x, y, size, size);
+                    
+                    // 添加"扫码体验"文字
+                    ctx.fillStyle = '#333333';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('扫码体验', x + size / 2, y + size + 15);
+                    
+                    resolve();
+                };
+                
+                image.onerror = (err) => {
+                    console.error('图片加载失败:', err);
+                    reject(new Error('二维码图片加载失败'));
+                };
+                
+                console.log('设置图片源:', tempFilePath);
+                image.src = tempFilePath;
+            });
+            
+            // 清理临时文件
+            wx.getFileSystemManager().unlink({
+                filePath: tempFilePath,
+                success: () => console.log('临时二维码文件已清理'),
+                fail: (err) => console.warn('清理临时文件失败:', err)
+            });
+            
+        } catch (error) {
+            console.error('绘制二维码失败:', error);
+            throw error; // 重新抛出错误，让调用方处理
+        }
+    }
+    
+    /**
+     * 备用二维码绘制方法（手绘模拟）
+     * @param {CanvasRenderingContext2D} ctx - 画布上下文
+     * @param {number} x - 二维码左上角x坐标
+     * @param {number} y - 二维码左上角y坐标
+     * @param {number} size - 二维码尺寸
+     */
+    drawFallbackQRCode(ctx, x, y, size) {
+        // 绘制二维码背景
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, size, size);
+        
+        // 绘制二维码边框
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, size, size);
+        
+        // 简单的二维码图案模拟（实际项目中应使用二维码生成库）
+        ctx.fillStyle = '#000000';
+        const cellSize = size / 21; // 21x21的二维码网格
+        
+        // 绘制定位标记（左上角）
+        this.drawQRPositionMarker(ctx, x + cellSize, y + cellSize, cellSize * 7);
+        // 绘制定位标记（右上角）
+        this.drawQRPositionMarker(ctx, x + size - cellSize * 8, y + cellSize, cellSize * 7);
+        // 绘制定位标记（左下角）
+        this.drawQRPositionMarker(ctx, x + cellSize, y + size - cellSize * 8, cellSize * 7);
+        
+        // 绘制一些随机的数据点模拟二维码内容
+        for (let i = 0; i < 21; i++) {
+            for (let j = 0; j < 21; j++) {
+                // 跳过定位标记区域
+                if ((i < 9 && j < 9) || (i < 9 && j > 12) || (i > 12 && j < 9)) {
+                    continue;
+                }
+                
+                // 随机绘制一些点
+                if (Math.random() > 0.5) {
+                    ctx.fillRect(x + i * cellSize, y + j * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+        
+        // 绘制二维码说明文字
+        ctx.fillStyle = '#666666';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('扫码体验', x + size/2, y + size + 15);
+    }
+    
+    /**
+     * 绘制二维码定位标记
+     * @param {CanvasRenderingContext2D} ctx - 画布上下文
+     * @param {number} x - 标记左上角x坐标
+     * @param {number} y - 标记左上角y坐标
+     * @param {number} size - 标记尺寸
+     */
+    drawQRPositionMarker(ctx, x, y, size) {
+        const cellSize = size / 7;
+        
+        // 外框
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x, y, size, size);
+        
+        // 内部白色区域
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + cellSize, y + cellSize, size - 2 * cellSize, size - 2 * cellSize);
+        
+        // 中心黑色方块
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x + 2 * cellSize, y + 2 * cellSize, 3 * cellSize, 3 * cellSize);
     }
 
     /**

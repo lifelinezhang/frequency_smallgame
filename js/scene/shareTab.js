@@ -26,6 +26,9 @@ export default class ShareTab {
         // Tab生命周期状态
         this.isActive = false;
         this.isDataLoaded = false;
+        
+        // 保存图片状态标志，防止重复触发
+        this._isSaving = false;
 
         // 确保当前场景状态正确，防止意外触发答题完成流程
         this.ensureCorrectSceneState();
@@ -987,7 +990,10 @@ export default class ShareTab {
         // 检查保存图片按钮
         const saveBtn = this._shareButtonAreas.save;
         if (x >= saveBtn.x && x <= saveBtn.x + saveBtn.width && y >= saveBtn.y && y <= saveBtn.y + saveBtn.height) {
-            this.saveImage();
+            // 防止重复点击保存按钮
+            if (!this._isSaving) {
+                this.saveImage();
+            }
             return true;
         }
 
@@ -1085,7 +1091,18 @@ export default class ShareTab {
     /**
      * 保存图片到本地
      */
+    /**
+     * 保存图片到相册
+     * 修复：避免用户取消保存后重复触发保存功能
+     */
     async saveImage() {
+        // 防止重复点击
+        if (this._isSaving) {
+            return;
+        }
+        
+        this._isSaving = true;
+        
         try {
             // 保存当前画布状态
             this.ctx.save();
@@ -1104,8 +1121,11 @@ export default class ShareTab {
         } finally {
             // 恢复画布状态
             this.ctx.restore();
+            
+            // 重置保存状态
+            this._isSaving = false;
 
-            // 确保界面正确显示，防止黑屏
+            // 延迟重新渲染界面，避免立即重复触发
             setTimeout(() => {
                 if (this._showingReport && this._currentReportData && this._currentFriend) {
                     this.showReportDetail(this._currentReportData, this._currentFriend);
@@ -1113,7 +1133,7 @@ export default class ShareTab {
                     // 如果不在报告详情页面，则渲染主界面
                     this.render();
                 }
-            }, 50);
+            }, 200); // 增加延迟时间，确保用户操作完成
         }
     }
 
@@ -1251,17 +1271,17 @@ export default class ShareTab {
         try {
             // 从本地存储获取用户信息
             const userInfo = wx.getStorageSync('userInfo');
+            console.log('获取到的用户信息:', userInfo);
             
             if (userInfo && userInfo.openid) {
-                return `openid=${userInfo.openid}`;
-            } else {
-                console.warn('未找到用户openid，使用默认值');
-                return 'openid=default';
-            }
+                const encryptOpenId = encodeURIComponent(userInfo.openid);
+                console.log('获取到的用户openId:', encryptOpenId);
+                return encryptOpenId;
+            } 
         } catch (error) {
             console.error('获取用户openid失败:', error);
-            return 'openid=error';
         }
+        return '';
     }
 
     /**

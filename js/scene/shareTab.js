@@ -1117,7 +1117,7 @@ export default class ShareTab {
 
         } catch (error) {
             console.error('保存图片失败:', error);
-            this.showMessage('保存功能暂不可用');
+            // this.showMessage('保存功能暂不可用');
         } finally {
             // 恢复画布状态
             this.ctx.restore();
@@ -1220,8 +1220,8 @@ export default class ShareTab {
             const accessToken = await getWechatAccessToken();
             
             if (!accessToken) {
-                console.warn('获取AccessToken失败，使用备用方案');
-                this.drawFallbackQRCode(ctx, x, y, size);
+                console.warn('获取AccessToken失败，跳过二维码绘制');
+                // 跳过二维码绘制
                 return;
             }
 
@@ -1257,9 +1257,8 @@ export default class ShareTab {
             }
             
         } catch (error) {
-            console.error('生成小程序码失败，使用备用方案:', error);
-            // 如果API调用失败，使用手绘二维码作为备用方案
-            this.drawFallbackQRCode(ctx, x, y, size);
+            console.error('生成小程序码失败，跳过二维码绘制:', error);
+            // 如果API调用失败，跳过二维码绘制
         }
     }
 
@@ -1396,78 +1395,7 @@ export default class ShareTab {
         }
     }
     
-    /**
-     * 备用二维码绘制方法（手绘模拟）
-     * @param {CanvasRenderingContext2D} ctx - 画布上下文
-     * @param {number} x - 二维码左上角x坐标
-     * @param {number} y - 二维码左上角y坐标
-     * @param {number} size - 二维码尺寸
-     */
-    drawFallbackQRCode(ctx, x, y, size) {
-        // 绘制二维码背景
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x, y, size, size);
-        
-        // 绘制二维码边框
-        ctx.strokeStyle = '#cccccc';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, size, size);
-        
-        // 简单的二维码图案模拟（实际项目中应使用二维码生成库）
-        ctx.fillStyle = '#000000';
-        const cellSize = size / 21; // 21x21的二维码网格
-        
-        // 绘制定位标记（左上角）
-        this.drawQRPositionMarker(ctx, x + cellSize, y + cellSize, cellSize * 7);
-        // 绘制定位标记（右上角）
-        this.drawQRPositionMarker(ctx, x + size - cellSize * 8, y + cellSize, cellSize * 7);
-        // 绘制定位标记（左下角）
-        this.drawQRPositionMarker(ctx, x + cellSize, y + size - cellSize * 8, cellSize * 7);
-        
-        // 绘制一些随机的数据点模拟二维码内容
-        for (let i = 0; i < 21; i++) {
-            for (let j = 0; j < 21; j++) {
-                // 跳过定位标记区域
-                if ((i < 9 && j < 9) || (i < 9 && j > 12) || (i > 12 && j < 9)) {
-                    continue;
-                }
-                
-                // 随机绘制一些点
-                if (Math.random() > 0.5) {
-                    ctx.fillRect(x + i * cellSize, y + j * cellSize, cellSize, cellSize);
-                }
-            }
-        }
-        
-        // 绘制二维码说明文字
-        ctx.fillStyle = '#666666';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('扫码体验', x + size/2, y + size + 15);
-    }
-    
-    /**
-     * 绘制二维码定位标记
-     * @param {CanvasRenderingContext2D} ctx - 画布上下文
-     * @param {number} x - 标记左上角x坐标
-     * @param {number} y - 标记左上角y坐标
-     * @param {number} size - 标记尺寸
-     */
-    drawQRPositionMarker(ctx, x, y, size) {
-        const cellSize = size / 7;
-        
-        // 外框
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(x, y, size, size);
-        
-        // 内部白色区域
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x + cellSize, y + cellSize, size - 2 * cellSize, size - 2 * cellSize);
-        
-        // 中心黑色方块
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(x + 2 * cellSize, y + 2 * cellSize, 3 * cellSize, 3 * cellSize);
-    }
+
 
     /**
      * 销毁组件

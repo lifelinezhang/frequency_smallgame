@@ -37,6 +37,31 @@ export const parseInviterFromLaunch = (launchOptions) => {
 };
 
 /**
+ * 从扫码场景值中解析邀请者信息
+ * @param {object} launchOptions 启动参数
+ * @returns {string|null} 邀请者openId
+ */
+export const parseInviterFromScene = (launchOptions) => {
+    try {
+        // 检查是否是扫码进入场景 (scene 1047 表示扫描小程序码进入)
+        if (launchOptions && launchOptions.scene === 1047) {
+            // 从scene参数中获取openid
+            const scene = launchOptions.query && launchOptions.query.scene;
+            if (scene) {
+                // scene参数就是之前保存的用户openid，需要解码
+                const decodedOpenId = decodeURIComponent(scene);
+                console.log('从扫码场景值中解析到邀请者openId:', decodedOpenId);
+                return decodedOpenId;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('解析扫码场景值失败:', error);
+        return null;
+    }
+};
+
+/**
  * 从分享票据中解析邀请者信息
  * @param {string} shareTicket 分享票据
  * @returns {Promise<string|null>} 邀请者openId
@@ -76,10 +101,17 @@ export const parseInviterFromShareTicket = async (shareTicket) => {
  */
 export const handleInvitationEntry = async (launchOptions) => {
     try {
+        console.log('处理邀请进入逻辑，启动参数:', launchOptions);
+        
         // 首先从启动参数中获取邀请者信息
         let inviterOpenId = parseInviterFromLaunch(launchOptions);
         
-        // 如果启动参数中没有，尝试从分享票据中获取
+        // 如果启动参数中没有，尝试从扫码场景值中获取
+        if (!inviterOpenId) {
+            inviterOpenId = parseInviterFromScene(launchOptions);
+        }
+        
+        // 如果还是没有，尝试从分享票据中获取
         if (!inviterOpenId && launchOptions.shareTicket) {
             inviterOpenId = await parseInviterFromShareTicket(launchOptions.shareTicket);
         }

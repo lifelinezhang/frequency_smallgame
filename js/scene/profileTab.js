@@ -344,7 +344,8 @@ export default class ProfileTab {
                 const userInfo = {
                     ...userInfoRes.userInfo,
                     token: loginResult.data.token,
-                    id: loginResult.data.id // 同时保存id字段以确保兼容性
+                    id: loginResult.data.id, // 同时保存id字段以确保兼容性
+                    openid: loginResult.data.openid // 保存后端返回的openid
                 };
 
                 wx.setStorageSync('userInfo', userInfo);

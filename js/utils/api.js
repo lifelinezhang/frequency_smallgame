@@ -1,8 +1,8 @@
 // API请求工具函数
 export const apiRequest = async (url, options = {}) => {
     // const baseURL = 'http://127.0.0.1:8098/api/web'; // 你的API域名
-    // const baseURL = 'http://101.43.88.252:8098/api/web'; // 你的API域名
-    const baseURL = 'https://samefrequency.cloud/api/web';
+    const baseURL = 'http://101.43.88.252:8098/api/web'; // 你的API域名
+    // const baseURL = 'https://samefrequency.cloud/api/web';
     const defaultOptions = {
         method: 'GET',
         header: {
@@ -147,6 +147,20 @@ export const getInvitationStats = async () => {
 export const getInvitedUsers = async () => {
     return await apiRequest('/user/getInvitedUsers', {
         method: 'GET'
+    });
+};
+
+/**
+ * 添加好友
+ * @param {string} friendOpenId 好友的openId
+ * @returns {Promise} 返回添加结果
+ */
+export const addFriend = async (friendOpenId) => {
+    return await apiRequest('/api/frequency/add-friend', {
+        method: 'POST',
+        data: {
+            friendOpenId: friendOpenId
+        }
     });
 };
 

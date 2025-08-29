@@ -2,7 +2,7 @@
  * 分享邀请相关工具函数
  */
 import DataStore from '../base/DataStore.js';
-import {recordInvitation} from './api.js';
+import {recordInvitation, addFriend} from './api.js';
 
 /**
  * 生成带有邀请者信息的分享参数
@@ -98,6 +98,15 @@ export const parseInviterFromShareTicket = async (shareTicket) => {
 };
 
 /**
+ * 检查用户是否已登录
+ * @returns {boolean} 用户是否已登录
+ */
+const isUserLoggedIn = () => {
+    const userInfo = wx.getStorageSync('userInfo');
+    return userInfo && userInfo.token;
+};
+
+/**
  * 处理用户通过分享进入的逻辑
  * @param {object} launchOptions 启动参数
  * @returns {Promise<boolean>} 是否成功处理邀请关系
@@ -120,11 +129,28 @@ export const handleInvitationEntry = async (launchOptions) => {
         }
 
         if (inviterOpenId) {
-            // 保存邀请者信息到本地存储
-            wx.setStorageSync('inviterOpenId', inviterOpenId);
-
             console.log('检测到邀请者:', inviterOpenId);
-            return true;
+            
+            // 检查当前用户是否已登录
+            if (isUserLoggedIn()) {
+                console.log('用户已登录，直接调用后端保存好友关系接口');
+                try {
+                    // 直接调用后端保存好友关系的接口
+                    await addFriend(inviterOpenId);
+                    console.log('好友关系保存成功');
+                    return true;
+                } catch (error) {
+                    console.error('保存好友关系失败:', error);
+                    // 如果直接保存失败，仍然保存到本地存储，等登录后再处理
+                    wx.setStorageSync('inviterOpenId', inviterOpenId);
+                    return true;
+                }
+            } else {
+                // 用户未登录，保存邀请者信息到本地存储
+                wx.setStorageSync('inviterOpenId', inviterOpenId);
+                console.log('用户未登录，邀请者信息已保存到本地存储');
+                return true;
+            }
         }
 
         return false;

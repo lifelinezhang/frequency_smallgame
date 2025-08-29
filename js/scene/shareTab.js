@@ -2,7 +2,15 @@ import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
 import {
-    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest, getWechatAccessToken, generateQRCodeFromBackend
+    getFriendsList,
+    getKeyInfo,
+    getUnlockedReports,
+    unlockFriendReport,
+    getFriendReportDetail,
+    checkUnlockStatus,
+    apiRequest,
+    getWechatAccessToken,
+    generateQRCodeFromBackend
 } from '../utils/api';
 
 /**
@@ -26,7 +34,7 @@ export default class ShareTab {
         // Tab生命周期状态
         this.isActive = false;
         this.isDataLoaded = false;
-        
+
         // 保存图片状态标志，防止重复触发
         this._isSaving = false;
 
@@ -1022,11 +1030,12 @@ export default class ShareTab {
             });
 
             // 调用分享接口
+            const userInfo = wx.getStorageSync('userInfo');
             await wx.onShareAppMessage({
                 title: `我和${this._currentFriend.nickName}的同频度是${this._currentReportData.frequency}%！`,
                 desc: '快来测试你们的同频度吧！',
                 imageUrl: imageUrl,
-                query: 'from=friend'
+                query: `inviter=${userInfo.openid}`
             });
 
             this.showMessage('请点击右上角菜单分享到朋友圈');
@@ -1060,13 +1069,13 @@ export default class ShareTab {
 
             // 生成分享图片
             const imageUrl = await this.generateShareImage();
-
+            const userInfo = wx.getStorageSync('userInfo');
             // 调用分享接口
             await wx.shareAppMessage({
                 title: `我和${this._currentFriend.nickName}的同频度是${this._currentReportData.frequency}%！`,
                 desc: '快来测试你们的同频度吧！',
                 imageUrl: imageUrl,
-                query: 'from=friend'
+                query: `inviter=${userInfo.openid}`
             });
 
         } catch (error) {
@@ -1100,9 +1109,9 @@ export default class ShareTab {
         if (this._isSaving) {
             return;
         }
-        
+
         this._isSaving = true;
-        
+
         try {
             // 保存当前画布状态
             this.ctx.save();
@@ -1121,7 +1130,7 @@ export default class ShareTab {
         } finally {
             // 恢复画布状态
             this.ctx.restore();
-            
+
             // 重置保存状态
             this._isSaving = false;
 
@@ -1159,16 +1168,16 @@ export default class ShareTab {
             ctx.fillStyle = '#333333';
             ctx.font = 'bold 18px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('同频报告', canvas.width/2, 40);
+            ctx.fillText('同频报告', canvas.width / 2, 40);
 
             // 绘制好友信息
             ctx.font = '16px Arial';
-            ctx.fillText(`与${this._currentFriend.nickName}的同频度`, canvas.width/2, 80);
+            ctx.fillText(`与${this._currentFriend.nickName}的同频度`, canvas.width / 2, 80);
 
             // 绘制同频度
             ctx.fillStyle = '#007AFF';
             ctx.font = 'bold 48px Arial';
-            ctx.fillText(`${this._currentReportData.frequency}%`, canvas.width/2, 150);
+            ctx.fillText(`${this._currentReportData.frequency}%`, canvas.width / 2, 150);
 
             // 绘制报告摘要（截取前100字符）
             if (this._currentReportData.report) {
@@ -1189,16 +1198,15 @@ export default class ShareTab {
             ctx.fillStyle = '#999999';
             ctx.font = '10px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('来自同频小游戏', canvas.width/2, 300);
+            ctx.fillText('来自同频小游戏', canvas.width / 2, 300);
 
             // 绘制二维码区域
-            await this.drawQRCode(ctx, canvas.width/2 - 40, 330, 80);
+            await this.drawQRCode(ctx, canvas.width / 2 - 40, 330, 80);
 
             // 转换为临时文件
             return await new Promise((resolve, reject) => {
                 canvas.toTempFilePath({
-                    success: (res) => resolve(res.tempFilePath),
-                    fail: reject
+                    success: (res) => resolve(res.tempFilePath), fail: reject
                 });
             });
         } catch (error) {
@@ -1225,7 +1233,7 @@ export default class ShareTab {
         try {
             // 调用后台接口生成小程序码（JSON格式）
             const qrCodeData = await generateQRCodeFromBackend(size);
-            
+
             if (qrCodeData) {
                 // 将base64数据转换为ArrayBuffer并绘制
                 await this.drawQRCodeFromBase64(ctx, x, y, size, qrCodeData);
@@ -1233,7 +1241,7 @@ export default class ShareTab {
             } else {
                 console.warn('获取二维码数据失败，跳过二维码绘制');
             }
-            
+
         } catch (error) {
             console.error('生成小程序码失败，跳过二维码绘制:', error);
             // 如果API调用失败，跳过二维码绘制
@@ -1252,7 +1260,7 @@ export default class ShareTab {
         try {
             // 创建图片对象
             const image = wx.createImage();
-            
+
             return new Promise((resolve, reject) => {
                 image.onload = () => {
                     try {
@@ -1265,12 +1273,12 @@ export default class ShareTab {
                         reject(error);
                     }
                 };
-                
+
                 image.onerror = (error) => {
                     console.error('加载二维码图片失败:', error);
                     reject(error);
                 };
-                
+
                 // 处理base64数据格式，移除可能的重复前缀
                 let processedBase64Data = base64Data;
                 if (base64Data.startsWith('data:image/png;base64,')) {
@@ -1280,11 +1288,11 @@ export default class ShareTab {
                     // 如果只是base64编码数据，添加data URL前缀
                     processedBase64Data = `data:image/png;base64,${base64Data}`;
                 }
-                
+
                 // 设置图片源为处理后的base64数据
                 image.src = processedBase64Data;
             });
-            
+
         } catch (error) {
             console.error('从base64数据绘制二维码失败:', error);
             throw error;
@@ -1300,12 +1308,12 @@ export default class ShareTab {
             // 从本地存储获取用户信息
             const userInfo = wx.getStorageSync('userInfo');
             console.log('获取到的用户信息:', userInfo);
-            
+
             if (userInfo && userInfo.openid) {
                 const encryptOpenId = encodeURIComponent(userInfo.openid);
                 console.log('获取到的用户openId:', encryptOpenId);
                 return encryptOpenId;
-            } 
+            }
         } catch (error) {
             console.error('获取用户openid失败:', error);
         }
@@ -1317,7 +1325,7 @@ export default class ShareTab {
      * @returns {Promise<string|null>} AccessToken或null
      */
 
-    
+
     /**
      * 从二进制数据绘制二维码
      * @param {CanvasRenderingContext2D} ctx - Canvas上下文
@@ -1329,23 +1337,22 @@ export default class ShareTab {
     async drawQRCodeFromBuffer(ctx, x, y, size, buffer) {
         try {
             console.log('开始处理二维码数据，数据大小:', buffer.byteLength);
-            
+
             // 检查数据是否为有效的图片数据
             if (!buffer || buffer.byteLength === 0) {
                 throw new Error('二维码数据为空');
             }
-            
+
             // 将ArrayBuffer转换为Uint8Array
             const uint8Array = new Uint8Array(buffer);
-            
+
             // 检查图片格式
             // PNG文件头：89 50 4E 47
-            const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && 
-                         uint8Array[2] === 0x4E && uint8Array[3] === 0x47;
-            
+            const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4E && uint8Array[3] === 0x47;
+
             // JPEG文件头：FF D8 FF
             const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8 && uint8Array[2] === 0xFF;
-            
+
             if (!isPNG && !isJPEG) {
                 console.warn('返回的数据不是PNG或JPEG格式，尝试作为错误信息解析');
                 // 尝试将数据作为文本解析，可能是错误信息
@@ -1354,76 +1361,72 @@ export default class ShareTab {
                 console.error('微信API返回错误:', errorText);
                 throw new Error('微信API返回的不是图片数据: ' + errorText);
             }
-            
+
             // 根据图片格式确定文件扩展名
             const fileExtension = isPNG ? 'png' : 'jpg';
             console.log('检测到图片格式:', fileExtension.toUpperCase());
-            
+
             // 将返回的图片数据转换为临时文件
             const tempFilePath = await new Promise((resolve, reject) => {
                 const fs = wx.getFileSystemManager();
                 const tempPath = `${wx.env.USER_DATA_PATH}/qrcode_${Date.now()}.${fileExtension}`;
-                
+
                 console.log('写入临时文件:', tempPath);
-                
+
                 fs.writeFile({
-                    filePath: tempPath,
-                    data: buffer,
-                    success: () => {
+                    filePath: tempPath, data: buffer, success: () => {
                         console.log('临时文件写入成功');
                         resolve(tempPath);
-                    },
-                    fail: (err) => {
+                    }, fail: (err) => {
                         console.error('写入临时文件失败:', err);
                         reject(err);
                     }
                 });
             });
-            
+
             // 创建图片对象并绘制到Canvas
             const image = wx.createImage();
             await new Promise((resolve, reject) => {
                 image.onload = () => {
                     console.log('二维码图片加载成功，尺寸:', image.width, 'x', image.height);
-                    
+
                     // 绘制白色背景
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(x, y, size, size);
-                    
+
                     // 绘制二维码图片
                     ctx.drawImage(image, x, y, size, size);
-                    
+
                     // 添加"扫码体验"文字
                     ctx.fillStyle = '#333333';
                     ctx.font = '12px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText('扫码体验', x + size / 2, y + size + 15);
-                    
+
                     resolve();
                 };
-                
+
                 image.onerror = (err) => {
                     console.error('图片加载失败:', err);
                     reject(new Error('二维码图片加载失败'));
                 };
-                
+
                 console.log('设置图片源:', tempFilePath);
                 image.src = tempFilePath;
             });
-            
+
             // 清理临时文件
             wx.getFileSystemManager().unlink({
                 filePath: tempFilePath,
                 success: () => console.log('临时二维码文件已清理'),
                 fail: (err) => console.warn('清理临时文件失败:', err)
             });
-            
+
         } catch (error) {
             console.error('绘制二维码失败:', error);
             throw error; // 重新抛出错误，让调用方处理
         }
     }
-    
 
 
     /**

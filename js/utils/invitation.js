@@ -2,7 +2,7 @@
  * 分享邀请相关工具函数
  */
 import DataStore from '../base/DataStore.js';
-import { recordInvitation } from './api.js';
+import {recordInvitation} from './api.js';
 
 /**
  * 生成带有邀请者信息的分享参数
@@ -16,7 +16,7 @@ export const generateShareQuery = (inviterOpenId, extraParams = {}) => {
         timestamp: Date.now(),
         ...extraParams
     };
-    
+
     return Object.keys(params)
         .map(key => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
@@ -31,7 +31,7 @@ export const parseInviterFromLaunch = (launchOptions) => {
     if (!launchOptions || !launchOptions.query) {
         return null;
     }
-    
+
     const query = launchOptions.query;
     return query.inviter || null;
 };
@@ -75,7 +75,7 @@ export const parseInviterFromShareTicket = async (shareTicket) => {
             resolve(null);
             return;
         }
-        
+
         wx.getShareInfo({
             shareTicket: shareTicket,
             success: (res) => {
@@ -105,28 +105,28 @@ export const parseInviterFromShareTicket = async (shareTicket) => {
 export const handleInvitationEntry = async (launchOptions) => {
     try {
         console.log('处理邀请进入逻辑，启动参数:', launchOptions);
-        
+
         // 首先从启动参数中获取邀请者信息
         let inviterOpenId = parseInviterFromLaunch(launchOptions);
-        
+
         // 如果启动参数中没有，尝试从扫码场景值中获取
         if (!inviterOpenId) {
             inviterOpenId = parseInviterFromScene(launchOptions);
         }
-        
+
         // 如果还是没有，尝试从分享票据中获取
         if (!inviterOpenId && launchOptions.shareTicket) {
             inviterOpenId = await parseInviterFromShareTicket(launchOptions.shareTicket);
         }
-        
+
         if (inviterOpenId) {
             // 保存邀请者信息到本地存储
             wx.setStorageSync('inviterOpenId', inviterOpenId);
-            
+
             console.log('检测到邀请者:', inviterOpenId);
             return true;
         }
-        
+
         return false;
     } catch (error) {
         console.error('处理邀请进入逻辑失败:', error);
@@ -141,18 +141,18 @@ export const handleInvitationEntry = async (launchOptions) => {
 export const recordInvitationAfterLogin = async () => {
     try {
         const inviterOpenId = wx.getStorageSync('inviterOpenId');
-        
+
         if (inviterOpenId) {
             // 调用API记录邀请关系
             await recordInvitation(inviterOpenId);
-            
+
             // 记录成功后清除本地存储的邀请者信息
             wx.removeStorageSync('inviterOpenId');
-            
+
             console.log('邀请关系记录成功');
             return true;
         }
-        
+
         return false;
     } catch (error) {
         console.error('记录邀请关系失败:', error);
@@ -176,13 +176,13 @@ export const getCurrentUserOpenId = () => {
  */
 export const generateShareConfig = (options = {}) => {
     const currentUserOpenId = getCurrentUserOpenId();
-    
+
     const defaultConfig = {
         title: '快来和我一起答题吧！',
         imageUrl: '', // 可以设置默认的分享图片
         query: currentUserOpenId ? generateShareQuery(currentUserOpenId) : ''
     };
-    
+
     return {
         ...defaultConfig,
         ...options,

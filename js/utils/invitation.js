@@ -43,14 +43,17 @@ export const parseInviterFromLaunch = (launchOptions) => {
  */
 export const parseInviterFromScene = (launchOptions) => {
     try {
-        // 检查是否是扫码进入场景 (scene 1047 表示扫描小程序码进入)
-        if (launchOptions && launchOptions.scene === 1047) {
+        // 检查是否是扫码进入场景
+        // 1047: 扫描小程序码
+        // 1048: 长按图片识别小程序码
+        // 1049: 扫描手机相册中选取的小程序码
+        if (launchOptions && [1047, 1048, 1049].includes(launchOptions.scene)) {
             // 从scene参数中获取openid
             const scene = launchOptions.query && launchOptions.query.scene;
             if (scene) {
                 // scene参数就是之前保存的用户openid，需要解码
                 const decodedOpenId = decodeURIComponent(scene);
-                console.log('从扫码场景值中解析到邀请者openId:', decodedOpenId);
+                console.log('从扫码场景值中解析到邀请者openId:', decodedOpenId, '场景值:', launchOptions.scene);
                 return decodedOpenId;
             }
         }

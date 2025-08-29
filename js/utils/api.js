@@ -1,8 +1,8 @@
 // API请求工具函数
 export const apiRequest = async (url, options = {}) => {
     // const baseURL = 'http://127.0.0.1:8098/api/web'; // 你的API域名
-    const baseURL = 'http://101.43.88.252:8098/api/web'; // 你的API域名
-    // const baseURL = '101.43.88.252/api/web';
+    // const baseURL = 'http://101.43.88.252:8098/api/web'; // 你的API域名
+    const baseURL = 'https://samefrequency.cloud/api/web';
     const defaultOptions = {
         method: 'GET',
         header: {
@@ -256,6 +256,49 @@ export const getWechatAccessToken = async () => {
         }
     } catch (error) {
         console.error('请求AccessToken接口失败:', error);
+        return null;
+    }
+};
+
+/**
+ * 从后端生成小程序二维码
+ * @param {number} size - 二维码尺寸
+ * @returns {Promise<string|null>} base64编码的图片数据或null
+ */
+export const generateQRCodeFromBackend = async (size = 280) => {
+    try {
+        // 获取用户场景值
+        const userInfo = wx.getStorageSync('userInfo');
+        let scene = '';
+        if (userInfo && userInfo.openid) {
+            scene = encodeURIComponent(userInfo.openid);
+        }
+        
+        // 构建请求参数
+        const requestData = {
+            scene: scene,
+            page: 'pages/index/index', // 小程序页面路径
+            width: size,
+            autoColor: false,
+            lineColor: { r: 0, g: 0, b: 0 },
+            isHyaline: false,
+            checkPath: false, // 小游戏设置为false
+            envVersion: 'release' // 正式版
+        };
+        
+        const response = await apiRequest('/api/share/wechat/qrcode-json', {
+            method: 'POST',
+            data: requestData
+        });
+
+        if (response && response.data) {
+            return response.data; // 返回base64编码的图片数据
+        } else {
+            throw new Error('后台返回的二维码数据为空');
+        }
+        
+    } catch (error) {
+        console.error('调用后台生成小程序码接口失败:', error);
         return null;
     }
 };

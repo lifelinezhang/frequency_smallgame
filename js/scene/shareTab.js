@@ -2,7 +2,7 @@ import Background from '../runtime/background';
 import DataStore from '../base/DataStore';
 import Sprite from '../base/Sprite';
 import {
-    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest, getWechatAccessToken
+    getFriendsList, getKeyInfo, getUnlockedReports, unlockFriendReport, getFriendReportDetail, checkUnlockStatus, apiRequest, getWechatAccessToken, generateQRCodeFromBackend
 } from '../utils/api';
 
 /**
@@ -1214,51 +1214,80 @@ export default class ShareTab {
      * @param {number} y - 二维码左上角y坐标
      * @param {number} size - 二维码尺寸
      */
+    /**
+     * 绘制二维码
+     * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+     * @param {number} x - 二维码左上角x坐标
+     * @param {number} y - 二维码左上角y坐标
+     * @param {number} size - 二维码尺寸
+     */
     async drawQRCode(ctx, x, y, size) {
         try {
-            // 首先获取微信AccessToken
-            const accessToken = await getWechatAccessToken();
+            // 调用后台接口生成小程序码（JSON格式）
+            const qrCodeData = await generateQRCodeFromBackend(size);
             
-            if (!accessToken) {
-                console.warn('获取AccessToken失败，跳过二维码绘制');
-                // 跳过二维码绘制
-                return;
-            }
-
-            // 使用微信小程序 wxacode.getUnlimited 方法生成小程序码
-            const apiUrl = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
-            
-            const result = await new Promise((resolve, reject) => {
-                wx.request({
-                    url: apiUrl,
-                    method: 'POST',
-                    header: {
-                        'content-type': 'application/json'
-                    },
-                    data: {
-                        scene: this.getCurrentUserScene(), // 场景值，用于标识分享来源
-                        // 注意：小游戏不需要page参数，因为小游戏只有一个入口
-                        width: size * 2, // 二维码宽度，设置为显示尺寸的2倍以提高清晰度
-                        auto_color: false,
-                        line_color: {"r":0,"g":0,"b":0}, // 黑色线条
-                        is_hyaline: false
-                    },
-                    responseType: 'arraybuffer',
-                    success: resolve,
-                    fail: reject
-                });
-            });
-            
-            if (result.statusCode === 200 && result.data) {
-                await this.drawQRCodeFromBuffer(ctx, x, y, size, result.data);
+            if (qrCodeData) {
+                // 将base64数据转换为ArrayBuffer并绘制
+                await this.drawQRCodeFromBase64(ctx, x, y, size, qrCodeData);
                 return;
             } else {
-                throw new Error(`生成小程序码失败: ${result.statusCode}`);
+                console.warn('获取二维码数据失败，跳过二维码绘制');
             }
             
         } catch (error) {
             console.error('生成小程序码失败，跳过二维码绘制:', error);
             // 如果API调用失败，跳过二维码绘制
+        }
+    }
+
+    /**
+     * 从base64数据绘制二维码
+     * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+     * @param {number} x - 二维码左上角x坐标
+     * @param {number} y - 二维码左上角y坐标
+     * @param {number} size - 二维码尺寸
+     * @param {string} base64Data - base64编码的图片数据
+     */
+    async drawQRCodeFromBase64(ctx, x, y, size, base64Data) {
+        try {
+            // 创建图片对象
+            const image = wx.createImage();
+            
+            return new Promise((resolve, reject) => {
+                image.onload = () => {
+                    try {
+                        // 绘制二维码图片
+                        ctx.drawImage(image, x, y, size, size);
+                        console.log('二维码绘制成功');
+                        resolve();
+                    } catch (error) {
+                        console.error('绘制二维码图片失败:', error);
+                        reject(error);
+                    }
+                };
+                
+                image.onerror = (error) => {
+                    console.error('加载二维码图片失败:', error);
+                    reject(error);
+                };
+                
+                // 处理base64数据格式，移除可能的重复前缀
+                let processedBase64Data = base64Data;
+                if (base64Data.startsWith('data:image/png;base64,')) {
+                    // 如果已经包含完整的data URL前缀，直接使用
+                    processedBase64Data = base64Data;
+                } else {
+                    // 如果只是base64编码数据，添加data URL前缀
+                    processedBase64Data = `data:image/png;base64,${base64Data}`;
+                }
+                
+                // 设置图片源为处理后的base64数据
+                image.src = processedBase64Data;
+            });
+            
+        } catch (error) {
+            console.error('从base64数据绘制二维码失败:', error);
+            throw error;
         }
     }
 
